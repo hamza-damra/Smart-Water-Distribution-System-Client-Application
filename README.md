@@ -1,16 +1,14 @@
-# mytank
+# Pull remote changes and allow unrelated histories
+git pull origin main --allow-unrelated-histories
 
-A new Flutter project.
+# Resolve conflicts in README.md (or other files)
+# Open the file, fix the conflict, and save it
 
-## Getting Started
+# Mark the conflict as resolved
+git add README.md
 
-This project is a starting point for a Flutter application.
+# Commit the merge
+git commit -m "Merge remote changes and resolve conflicts in README.md"
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# Push your changes
+git push -u origin main
