@@ -1,11 +1,7 @@
-import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:mytank/screens/updatePassword_screen.dart';
-import 'forgotPassword_screen.dart';
-import 'update_data_screen.dart';
+import 'package:mytank/providers/auth_provider.dart';
+import 'package:mytank/utilities/route_manager.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,70 +13,18 @@ class LoginScreen extends StatefulWidget {
 class LoginScreenState extends State<LoginScreen> {
   final TextEditingController _identityNumberController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _isLoading = false;
-
-  Future<void> _login() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    final String identityNumber = _identityNumberController.text.trim();
-    final String password = _passwordController.text.trim();
-
-    final Uri url = Uri.parse('https://smart-water-distribution-system.onrender.com/api/customer/login');
-    final Map<String, String> body = {
-      'identity_number': identityNumber,
-      'password': password,
-    };
-
-    try {
-      final response = await http.post(
-        url,
-        body: json.encode(body),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final String token = data['token'];
-        if (kDebugMode) {
-          print('Login Successful! Token: $token');
-        }
-
-        // Navigate to the next screen or show a success message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Login Successful!')),
-          );
-        }
-      } else {
-        if (kDebugMode) {
-          print('Login Failed: ${response.body}');
-        }
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Login Failed: Invalid credentials')),
-          );
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error: $e');
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An error occurred. Please try again.')),
-        );
-      }
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
+    // Redirect to home screen if already authenticated
+    if (authProvider.isAuthenticated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, RouteManager.homeRoute);
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Login'),
@@ -107,45 +51,43 @@ class LoginScreenState extends State<LoginScreen> {
               ),
             ),
             SizedBox(height: 24),
-            _isLoading
+            authProvider.isLoading
                 ? CircularProgressIndicator()
                 : ElevatedButton(
-              onPressed: _login,
+              onPressed: () async {
+                try {
+                  await authProvider.login(
+                    _identityNumberController.text.trim(),
+                    _passwordController.text.trim(),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Login Successful!')),
+                  );
+                  Navigator.pushReplacementNamed(context, RouteManager.homeRoute);
+                } catch (e) {
+                  // Show only the specific error message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Login Failed: Invalid credentials')),
+                  );
+                }
+              },
               child: Text('Login'),
             ),
             TextButton(
               onPressed: () {
-                // Navigate to the Forgot Password Screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ForgotPasswordScreen(),
-                  ),
-                );
+                Navigator.pushNamed(context, RouteManager.forgotPasswordRoute);
               },
               child: Text('Forgot Password?'),
             ),
             TextButton(
               onPressed: () {
-                // Navigate to the Update Password Screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => UpdatePasswordScreen(),
-                  ),
-                );
+                Navigator.pushNamed(context, RouteManager.updatePasswordRoute);
               },
               child: Text('Update Password'),
             ),
             TextButton(
               onPressed: () {
-                // Navigate to the Update Data Screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => UpdateDataScreen(),
-                  ),
-                );
+                Navigator.pushNamed(context, RouteManager.updateDataRoute);
               },
               child: Text('Update Profile Data'),
             ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:provider/provider.dart';
+import 'package:mytank/providers/update_data_provider.dart';
 
 class UpdateDataScreen extends StatefulWidget {
   const UpdateDataScreen({super.key});
@@ -14,61 +14,11 @@ class UpdateDataScreenState extends State<UpdateDataScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  bool _isLoading = false;
-
-  Future<void> _updateData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    final String identityNumber = _identityNumberController.text.trim();
-    final String name = _nameController.text.trim();
-    final String email = _emailController.text.trim();
-    final String phone = _phoneController.text.trim();
-
-    final Uri url = Uri.parse('https://smart-water-distribution-system.onrender.com/api/customer/update-data');
-    final Map<String, String> body = {
-      'identity_number': identityNumber,
-      'name': name,
-      'email': email,
-      'phone': phone,
-    };
-
-    try {
-      final response = await http.post(
-        url,
-        body: json.encode(body),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Data updated successfully!')),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update data. Please try again.')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An error occurred. Please try again.')),
-        );
-      }
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    final updateDataProvider = Provider.of<UpdateDataProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Update Profile Data'),
@@ -110,10 +60,26 @@ class UpdateDataScreenState extends State<UpdateDataScreen> {
               ),
             ),
             SizedBox(height: 24),
-            _isLoading
+            updateDataProvider.isLoading
                 ? CircularProgressIndicator()
                 : ElevatedButton(
-              onPressed: _updateData,
+              onPressed: () async {
+                try {
+                  await updateDataProvider.updateData(
+                    identityNumber: _identityNumberController.text.trim(),
+                    name: _nameController.text.trim(),
+                    email: _emailController.text.trim(),
+                    phone: _phoneController.text.trim(),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Data updated successfully!')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to update data: $e')),
+                  );
+                }
+              },
               child: Text('Update Data'),
             ),
           ],

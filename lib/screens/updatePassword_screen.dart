@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:provider/provider.dart';
+import 'package:mytank/providers/auth_provider.dart';
 
 class UpdatePasswordScreen extends StatefulWidget {
   const UpdatePasswordScreen({super.key});
@@ -12,57 +12,11 @@ class UpdatePasswordScreen extends StatefulWidget {
 class UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
   final TextEditingController _currentPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  bool _isLoading = false;
-
-  Future<void> _updatePassword() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    final String currentPassword = _currentPasswordController.text.trim();
-    final String newPassword = _newPasswordController.text.trim();
-
-    final Uri url = Uri.parse('https://smart-water-distribution-system.onrender.com/api/customer/update-password');
-    final Map<String, String> body = {
-      'currentPassword': currentPassword,
-      'newPassword': newPassword,
-    };
-
-    try {
-      final response = await http.post(
-        url,
-        body: json.encode(body),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Password updated successfully!')),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update password. Please try again.')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An error occurred. Please try again.')),
-        );
-      }
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Update Password'),
@@ -90,10 +44,24 @@ class UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
               ),
             ),
             SizedBox(height: 24),
-            _isLoading
+            authProvider.isLoading
                 ? CircularProgressIndicator()
                 : ElevatedButton(
-              onPressed: _updatePassword,
+              onPressed: () async {
+                try {
+                  await authProvider.updatePassword(
+                    _currentPasswordController.text.trim(),
+                    _newPasswordController.text.trim(),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Password updated successfully!')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to update password: $e')),
+                  );
+                }
+              },
               child: Text('Update Password'),
             ),
           ],
