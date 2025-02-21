@@ -3,7 +3,7 @@ import 'package:mytank/screens/login_screen.dart';
 import 'package:mytank/screens/forgotPassword_screen.dart';
 import 'package:mytank/screens/updatePassword_screen.dart';
 import 'package:mytank/screens/update_data_screen.dart';
-import 'package:mytank/screens/home_screen.dart'; // Add your home screen here
+import 'package:mytank/screens/home_screen.dart';
 
 class RouteManager {
   static const String loginRoute = '/';

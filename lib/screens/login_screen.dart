@@ -18,7 +18,6 @@ class LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
 
-    // Redirect to home screen if already authenticated
     if (authProvider.isAuthenticated) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.pushReplacementNamed(context, RouteManager.homeRoute);

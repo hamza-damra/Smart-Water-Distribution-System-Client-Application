@@ -52,7 +52,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Logout method
   Future<void> logout() async {
     _token = null;
     await TokenManager.clearToken();
