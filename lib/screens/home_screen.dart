@@ -1,3 +1,4 @@
+// home_screen.dart
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:mytank/providers/auth_provider.dart';
@@ -11,8 +12,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late AnimationController _waveController;
 
   /// The water level in the tank (0.0 = empty, 1.0 = full)
@@ -24,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen>
     _waveController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat(); // wave animation loops
+    )..repeat(); // Wave animation loops indefinitely.
   }
 
   @override
@@ -37,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen>
   void _increaseWaterLevel() {
     setState(() {
       _waterLevel += 0.05;
-      if (_waterLevel > 1.0) _waterLevel = 1.0; // clamp at max (full)
+      if (_waterLevel > 1.0) _waterLevel = 1.0; // Clamp at max (full)
     });
   }
 
@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen>
   void _decreaseWaterLevel() {
     setState(() {
       _waterLevel -= 0.05;
-      if (_waterLevel < 0.0) _waterLevel = 0.0; // clamp at min (empty)
+      if (_waterLevel < 0.0) _waterLevel = 0.0; // Clamp at min (empty)
     });
   }
 
@@ -102,13 +102,12 @@ class _HomeScreenState extends State<HomeScreen>
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Water tank title
+            // Title
             const Text(
               'My Tank Animation',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-
             // Animated water tank
             SizedBox(
               width: 120,
@@ -121,8 +120,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             const SizedBox(height: 16),
-
-            // Increase / Decrease water level
+            // Increase / Decrease water level buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -138,99 +136,61 @@ class _HomeScreenState extends State<HomeScreen>
               ],
             ),
             const SizedBox(height: 30),
-
-            // Bills list
-            const Text(
-              'Bills',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            // Button to navigate to the Tanks screen
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, RouteManager.tanksRoute);
+              },
+              child: const Text('Go to Tanks'),
             ),
-            const SizedBox(height: 12),
-            _buildBillsList(),
           ],
         ),
       ),
     );
   }
-
-  /// A dummy list of bills
-  Widget _buildBillsList() {
-    final bills = [
-      'Water Bill - Due 5/Apr',
-      'Electricity Bill - Due 10/Apr',
-      'Maintenance Fee - Due 15/Apr',
-      'Sewerage Fee - Due 20/Apr',
-    ];
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: bills.length,
-      itemBuilder: (context, index) {
-        return Card(
-          child: ListTile(
-            leading: const Icon(Icons.receipt_long),
-            title: Text(bills[index]),
-            subtitle: const Text('Tap for details'),
-            onTap: () {
-              // TODO: Implement further navigation if needed
-            },
-          ),
-        );
-      },
-    );
-  }
 }
 
-/// Custom painter for the water tank
+/// Custom painter for the water tank wave animation.
 class _WaterTankPainter extends CustomPainter {
   final Animation<double> animation;
-  final double waterLevel; // 0.0 to 1.0
+  final double waterLevel; // Expected value between 0.0 and 1.0
 
   _WaterTankPainter({required this.animation, required this.waterLevel})
-    : super(repaint: animation);
+      : super(repaint: animation);
 
   @override
   void paint(Canvas canvas, Size size) {
     // 1) Draw tank border
-    final tankPaint =
-        Paint()
-          ..color = Colors.black
-          ..strokeWidth = 3
-          ..style = PaintingStyle.stroke;
-
+    final tankPaint = Paint()
+      ..color = Colors.black
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke;
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), tankPaint);
 
-    // 2) Animate wave horizontally
-    final waterPaint =
-        Paint()
-          ..color = Colors.blueAccent.withOpacity(0.6)
-          ..style = PaintingStyle.fill;
+    // 2) Draw animated water wave
+    final waterPaint = Paint()
+      ..color = Colors.blueAccent.withOpacity(0.6)
+      ..style = PaintingStyle.fill;
 
-    // Horizontal shift in wave
+    // Calculate horizontal shift based on animation value.
     final waveShift = animation.value * size.width;
-
-    // Base water line: 1.0 => top, 0.0 => bottom
-    // e.g. waterLevel=1 => baseHeight=0 => wave at top
-    // waterLevel=0 => baseHeight=size.height => wave at bottom
+    // Calculate base water line (top when full, bottom when empty).
     final baseHeight = size.height * (1 - waterLevel);
 
     final wavePath = Path();
-    // Start from bottom-left corner
+    // Start from bottom-left corner.
     wavePath.moveTo(0, size.height);
 
-    final waveHeight = 20.0; // amplitude
+    final waveHeight = 20.0; // Amplitude of the wave
     for (double x = 0; x <= size.width; x += 10) {
-      // Original wave formula
-      final rawY =
-          baseHeight + sin((x + waveShift) / size.width * 2 * pi) * waveHeight;
-      // Ensure wave stays within the tank (0..size.height)
+      final rawY = baseHeight + sin((x + waveShift) / size.width * 2 * pi) * waveHeight;
       final clampedY = rawY.clamp(0.0, size.height);
       wavePath.lineTo(x, clampedY);
     }
-
-    // Close path at bottom-right
+    // Close path at bottom-right.
     wavePath.lineTo(size.width, size.height);
     wavePath.close();
+
     canvas.drawPath(wavePath, waterPaint);
   }
 

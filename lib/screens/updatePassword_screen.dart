@@ -48,19 +48,19 @@ class UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
                 ? CircularProgressIndicator()
                 : ElevatedButton(
               onPressed: () async {
-                try {
-                  await authProvider.updatePassword(
-                    _currentPasswordController.text.trim(),
-                    _newPasswordController.text.trim(),
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Password updated successfully!')),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to update password: $e')),
-                  );
-                }
+                // try {
+                //   await authProvider.updatePassword(
+                //     _currentPasswordController.text.trim(),
+                //     _newPasswordController.text.trim(),
+                //   );
+                //   ScaffoldMessenger.of(context).showSnackBar(
+                //     SnackBar(content: Text('Password updated successfully!')),
+                //   );
+                // } catch (e) {
+                //   ScaffoldMessenger.of(context).showSnackBar(
+                //     SnackBar(content: Text('Failed to update password: $e')),
+                //   );
+                // }
               },
               child: Text('Update Password'),
             ),
