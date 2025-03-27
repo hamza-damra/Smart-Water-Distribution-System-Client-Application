@@ -3,47 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
-
+import '../models/day_usage.dart';
+import '../models/tank_details.dart';
 import '../providers/auth_provider.dart';
-
-// بيانات اليوم الواحد
-class DayUsage {
-  final int day;
-  final double amount;
-  DayUsage(this.day, this.amount);
-}
-
-// موديل بيانات الخزان
-class TankDetail {
-  final String id;
-  final double currentLevel;
-  final double maxCapacity;
-  final List<DayUsage> dailyUsage;
-
-  TankDetail({
-    required this.id,
-    required this.currentLevel,
-    required this.maxCapacity,
-    required this.dailyUsage,
-  });
-
-  factory TankDetail.fromJson(Map<String, dynamic> json) {
-    final usageMap = json['amount_per_month']?['days'] as Map<String, dynamic>? ?? {};
-    final usage = usageMap.entries.map((entry) {
-      return DayUsage(int.parse(entry.key), (entry.value as num).toDouble());
-    }).toList();
-    return TankDetail(
-      id: json['_id'] ?? json['id'],
-      currentLevel: (json['current_level'] as num).toDouble(),
-      maxCapacity: (json['max_capacity'] as num).toDouble(),
-      dailyUsage: usage,
-    );
-  }
-}
 
 class TankDetailsScreen extends StatefulWidget {
   final String tankId;
-  const TankDetailsScreen({Key? key, required this.tankId}) : super(key: key);
+  const TankDetailsScreen({super.key, required this.tankId});
 
   @override
   State<TankDetailsScreen> createState() => _TankDetailsScreenState();
@@ -124,7 +90,7 @@ class _TankDetailsScreenState extends State<TankDetailsScreen> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: usage.length * 20, // dynamic width
+          width: usage.length * 20,
           child: BarChart(
             BarChartData(
               alignment: BarChartAlignment.spaceAround,

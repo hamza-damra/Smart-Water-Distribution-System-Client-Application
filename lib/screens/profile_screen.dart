@@ -5,7 +5,7 @@ import 'package:mytank/utilities/route_manager.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
