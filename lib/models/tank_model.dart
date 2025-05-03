@@ -83,6 +83,65 @@ class Tank {
     return total;
   }
 
+  // Get usage history data for the last 7 days
+  List<double> getUsageHistoryData() {
+    if (amountPerMonth.isEmpty || amountPerMonth['days'] == null) {
+      return List.filled(7, 0.0);
+    }
+
+    Map<String, dynamic> days = amountPerMonth['days'];
+    List<double> usageData = [];
+
+    // Get current day
+    final now = DateTime.now();
+    final currentDay = now.day;
+
+    // Calculate the start day (we want to show the last 7 days with data)
+    int startDay = currentDay - 6;
+    if (startDay < 1) startDay = 1;
+
+    // Get data for the last 7 days
+    for (int day = startDay; day <= currentDay; day++) {
+      final dayStr = day.toString();
+      final usage = days[dayStr];
+      usageData.add(usage != null && usage is num ? usage.toDouble() : 0.0);
+    }
+
+    // If we have fewer than 7 days (early in the month), pad with zeros at the beginning
+    while (usageData.length < 7) {
+      usageData.insert(0, 0.0);
+    }
+
+    return usageData;
+  }
+
+  // Get day labels for the chart
+  List<String> getUsageHistoryLabels() {
+    final now = DateTime.now();
+    final currentDay = now.day;
+    final monthName = getCurrentMonthName().substring(
+      0,
+      3,
+    ); // First 3 letters of month name
+    List<String> labels = [];
+
+    // Calculate the start day (we want to show the last 7 days with data)
+    int startDay = currentDay - 6;
+    if (startDay < 1) startDay = 1;
+
+    // Get labels for the last 7 days
+    for (int day = startDay; day <= currentDay; day++) {
+      labels.add("$day $monthName");
+    }
+
+    // If we have fewer than 7 days (early in the month), pad with empty strings at the beginning
+    while (labels.length < 7) {
+      labels.insert(0, "");
+    }
+
+    return labels;
+  }
+
   // Get water inflow (water added to the tank)
   double getWaterInflow() {
     if (amountPerMonth.isEmpty || amountPerMonth['days'] == null) {

@@ -7,6 +7,9 @@ import 'package:mytank/utilities/route_manager.dart';
 import 'package:mytank/utilities/constants.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:provider/provider.dart';
+import 'package:mytank/providers/auth_provider.dart';
+import 'package:mytank/providers/update_data_provider.dart';
 
 // Helper method to replace deprecated withOpacity
 Color withValues(Color color, double opacity) =>
@@ -73,8 +76,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final pickedFile = await _picker.pickImage(source: source);
       if (pickedFile != null) {
         setState(() => _selectedImage = File(pickedFile.path));
+
+        // Upload the image to Cloudinary
+        _uploadImageToCloudinary();
       }
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadImageToCloudinary() async {
+    if (_selectedImage == null) return;
+
+    final updateDataProvider = Provider.of<UpdateDataProvider>(
+      context,
+      listen: false,
+    );
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Log image details
+      debugPrint('📸 Selected image path: ${_selectedImage!.path}');
+      debugPrint('📸 Selected image exists: ${await _selectedImage!.exists()}');
+      debugPrint(
+        '📸 Selected image size: ${await _selectedImage!.length()} bytes',
+      );
+
+      final success = await updateDataProvider.uploadAvatar(
+        _selectedImage!,
+        authProvider,
+      );
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile picture updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Refresh user data to show the updated avatar
+        _fetchUserData();
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              updateDataProvider.errorMessage ??
+                  'Failed to update profile picture',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error in profile screen while uploading image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error uploading image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _showImageSourceDialog() {
@@ -403,37 +484,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildShimmerProfileHeader() {
-    return Container(
-      padding: const EdgeInsets.only(top: 30, bottom: 30, right: 40, left: 40),
-      margin: const EdgeInsets.only(bottom: 15),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: Material(
         color: Colors.white,
+        elevation: 4,
+        shadowColor: withValues(Constants.primaryColor, 0.06),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(30),
           bottomRight: Radius.circular(30),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: withValues(Constants.primaryColor, 0.06),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+        child: Padding(
+          padding: const EdgeInsets.only(
+            top: 30,
+            bottom: 30,
+            right: 40,
+            left: 40,
           ),
-        ],
-      ),
-      child: _buildShimmerBase(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildShimmerContainer(
-              width: 130,
-              height: 130,
-              shape: BoxShape.circle,
+          child: _buildShimmerBase(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildShimmerContainer(
+                  width: 130,
+                  height: 130,
+                  shape: BoxShape.circle,
+                ),
+                const SizedBox(height: 20),
+                _buildShimmerContainer(
+                  width: 150,
+                  height: 24,
+                  borderRadius: 12,
+                ),
+                const SizedBox(height: 8),
+                _buildShimmerContainer(
+                  width: 200,
+                  height: 30,
+                  borderRadius: 20,
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            _buildShimmerContainer(width: 150, height: 24, borderRadius: 12),
-            const SizedBox(height: 8),
-            _buildShimmerContainer(width: 200, height: 30, borderRadius: 20),
-          ],
+          ),
         ),
       ),
     );
@@ -734,8 +825,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProfileHeader() {
     return Container(
-      padding: const EdgeInsets.only(top: 30, bottom: 30, right: 40, left: 40),
-      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.only(
@@ -744,80 +835,112 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: withValues(Constants.primaryColor, 0.06),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            color: withValues(Constants.primaryColor, 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Add some space at the top for better visual balance
+          const SizedBox(height: 12),
+
+          // Profile image with camera icon
           GestureDetector(
             onTap: _showImageSourceDialog,
-            child: Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                // Direct CircleAvatar without container
-                CircleAvatar(
-                  radius: 65,
-                  backgroundColor: Constants.accentColor.withAlpha(60),
-                  backgroundImage:
-                      _selectedImage != null
-                          ? FileImage(_selectedImage!)
-                          : null,
-                  child:
-                      _selectedImage == null
-                          ? Text(
-                            _user?.name.isNotEmpty == true
-                                ? _user!.name[0].toUpperCase()
-                                : 'U',
-                            style: const TextStyle(
-                              fontSize: 52,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          )
-                          : null,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: withValues(Constants.accentColor, 0.2),
+                  width: 2,
                 ),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Constants.primaryColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: withValues(Constants.primaryColor, 0.2),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+              ),
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  // Profile image
+                  CircleAvatar(
+                    radius: 70, // Slightly larger avatar
+                    backgroundColor: Constants.accentColor.withAlpha(60),
+                    backgroundImage:
+                        _selectedImage != null
+                            ? FileImage(_selectedImage!)
+                            : _user?.avatarUrl != null &&
+                                _user!.avatarUrl.isNotEmpty
+                            ? NetworkImage(_user!.avatarUrl)
+                            : null,
+                    child:
+                        (_selectedImage == null &&
+                                (_user?.avatarUrl == null ||
+                                    _user!.avatarUrl.isEmpty))
+                            ? Text(
+                              _user?.name.isNotEmpty == true
+                                  ? _user!.name[0].toUpperCase()
+                                  : 'U',
+                              style: const TextStyle(
+                                fontSize: 56,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            )
+                            : null,
                   ),
-                  child: const Icon(
-                    Icons.camera_alt_rounded,
-                    size: 18,
-                    color: Colors.white,
+
+                  // Camera icon
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Constants.primaryColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: withValues(Constants.primaryColor, 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_rounded,
+                      size: 20,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 20),
+
+          // Name with increased spacing
+          const SizedBox(height: 24),
           Text(
             _user?.name ?? 'User',
+            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 26,
+              fontSize: 28, // Slightly larger font
               fontWeight: FontWeight.bold,
               color: Constants.blackColor,
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 8),
+
+          // Role badge with improved spacing
+          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: withValues(Constants.accentColor, 0.15),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: withValues(Constants.accentColor, 0.3),
+                width: 1,
+              ),
             ),
             child: Text(
               'Water Conservation Specialist',

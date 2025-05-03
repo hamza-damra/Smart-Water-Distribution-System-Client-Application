@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:liquid_progress_indicator_v2/liquid_progress_indicator.dart';
 import 'package:mytank/models/tank_model.dart';
@@ -47,6 +46,72 @@ class _TanksScreenState extends State<TanksScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  // Get the maximum value for the chart Y-axis
+  double _getMaxChartValue(Tank tank) {
+    final usageData = tank.getUsageHistoryData();
+    double maxValue = 0;
+    for (var value in usageData) {
+      if (value > maxValue) maxValue = value;
+    }
+
+    // Add 20% padding to the max value for better visualization
+    // If all values are 0, return a default value of 100
+    return maxValue > 0 ? maxValue * 1.2 : 100;
+  }
+
+  // Build bar groups for the chart using real data
+  List<BarChartGroupData> _buildBarGroups(Tank? tank) {
+    if (tank == null) {
+      return List.generate(
+        7,
+        (index) => BarChartGroupData(
+          x: index,
+          barRods: [
+            BarChartRodData(
+              toY: 0,
+              color: Constants.primaryColor,
+              width: 15,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(6),
+                topRight: Radius.circular(6),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Get usage data from the tank model
+    final usageData = tank.getUsageHistoryData();
+
+    // Find the maximum value for better scaling
+    double maxValue = 0;
+    for (var value in usageData) {
+      if (value > maxValue) maxValue = value;
+    }
+
+    // If all values are 0, set a default max
+    if (maxValue == 0) maxValue = 100;
+
+    return List.generate(
+      usageData.length,
+      (index) => BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            toY: usageData[index],
+            color: Constants.primaryColor,
+            width: 15,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(6),
+              topRight: Radius.circular(6),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildFlowRateCard({
@@ -723,7 +788,9 @@ class _TanksScreenState extends State<TanksScreen> {
                                 ),
                                 const SizedBox(width: 15),
                                 Text(
-                                  'Usage History',
+                                  selectedTank != null
+                                      ? 'Daily Water Usage - ${selectedTank.getCurrentMonthName()}'
+                                      : 'Daily Water Usage',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -739,47 +806,88 @@ class _TanksScreenState extends State<TanksScreen> {
                               child: BarChart(
                                 BarChartData(
                                   alignment: BarChartAlignment.spaceAround,
-                                  maxY: 100,
-                                  barTouchData: BarTouchData(enabled: true),
-                                  titlesData: const FlTitlesData(
+                                  maxY:
+                                      selectedTank != null
+                                          ? _getMaxChartValue(selectedTank)
+                                          : 100,
+                                  barTouchData: BarTouchData(
+                                    enabled: true,
+                                    touchTooltipData: BarTouchTooltipData(
+                                      tooltipPadding: const EdgeInsets.all(8),
+                                      tooltipMargin: 8,
+                                      getTooltipItem: (
+                                        group,
+                                        groupIndex,
+                                        rod,
+                                        rodIndex,
+                                      ) {
+                                        return BarTooltipItem(
+                                          '${rod.toY.toStringAsFixed(1)} L',
+                                          const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  titlesData: FlTitlesData(
                                     show: true,
                                     bottomTitles: AxisTitles(
                                       sideTitles: SideTitles(
                                         showTitles: true,
                                         reservedSize: 30,
+                                        getTitlesWidget: (value, meta) {
+                                          // Get day labels from the tank model
+                                          final labels =
+                                              selectedTank
+                                                  ?.getUsageHistoryLabels() ??
+                                              List.filled(7, '');
+                                          if (value.toInt() >= 0 &&
+                                              value.toInt() < labels.length) {
+                                            return Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 8.0,
+                                              ),
+                                              child: Text(
+                                                labels[value.toInt()],
+                                                style: TextStyle(
+                                                  color: Constants.greyColor,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                          return const SizedBox();
+                                        },
                                       ),
                                     ),
                                     leftTitles: AxisTitles(
                                       sideTitles: SideTitles(
                                         showTitles: true,
                                         reservedSize: 40,
+                                        getTitlesWidget: (value, meta) {
+                                          return Text(
+                                            '${value.toInt()} L',
+                                            style: TextStyle(
+                                              color: Constants.greyColor,
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 10,
+                                            ),
+                                          );
+                                        },
                                       ),
                                     ),
-                                    topTitles: AxisTitles(
+                                    topTitles: const AxisTitles(
                                       sideTitles: SideTitles(showTitles: false),
                                     ),
-                                    rightTitles: AxisTitles(
+                                    rightTitles: const AxisTitles(
                                       sideTitles: SideTitles(showTitles: false),
                                     ),
                                   ),
                                   borderData: FlBorderData(show: false),
-                                  barGroups: List.generate(
-                                    7,
-                                    (index) => BarChartGroupData(
-                                      x: index,
-                                      barRods: [
-                                        BarChartRodData(
-                                          toY: Random().nextDouble() * 80 + 10,
-                                          color: Constants.primaryColor,
-                                          width: 15,
-                                          borderRadius: const BorderRadius.only(
-                                            topLeft: Radius.circular(6),
-                                            topRight: Radius.circular(6),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                  barGroups: _buildBarGroups(selectedTank),
                                 ),
                               ),
                             ),
