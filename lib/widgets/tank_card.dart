@@ -7,17 +7,14 @@ class TankCard extends StatefulWidget {
   final Tank tank;
   final VoidCallback onReadMore;
 
-  const TankCard({
-    Key? key,
-    required this.tank,
-    required this.onReadMore,
-  }) : super(key: key);
+  const TankCard({super.key, required this.tank, required this.onReadMore});
 
   @override
   State<TankCard> createState() => _TankCardState();
 }
 
-class _TankCardState extends State<TankCard> with SingleTickerProviderStateMixin {
+class _TankCardState extends State<TankCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _waveController;
 
   @override
@@ -37,15 +34,14 @@ class _TankCardState extends State<TankCard> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    final waterLevelFraction = widget.tank.currentLevel / widget.tank.maxCapacity;
+    final waterLevelFraction =
+        widget.tank.currentLevel / widget.tank.maxCapacity;
     final waterLevel = waterLevelFraction.clamp(0.0, 1.0);
     final fillPercentage = (waterLevel * 100).toStringAsFixed(1);
 
     return Card(
       color: Colors.grey[900],
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
@@ -68,7 +64,7 @@ class _TankCardState extends State<TankCard> with SingleTickerProviderStateMixin
               textAlign: TextAlign.center,
             ),
             Text(
-              '(${fillPercentage}%)',
+              '($fillPercentage%)',
               style: TextStyle(color: Colors.blue[300]),
             ),
             const SizedBox(height: 6),
@@ -96,22 +92,22 @@ class _WaterTankPainter extends CustomPainter {
   final Animation<double> animation;
   final double waterLevel;
 
-  _WaterTankPainter({
-    required this.animation,
-    required this.waterLevel,
-  }) : super(repaint: animation);
+  _WaterTankPainter({required this.animation, required this.waterLevel})
+    : super(repaint: animation);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final tankPaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
+    final tankPaint =
+        Paint()
+          ..color = Colors.white
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke;
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), tankPaint);
 
-    final waterPaint = Paint()
-      ..color = Colors.blueAccent.withOpacity(0.6)
-      ..style = PaintingStyle.fill;
+    final waterPaint =
+        Paint()
+          ..color = const Color.fromRGBO(66, 133, 244, 0.6)
+          ..style = PaintingStyle.fill;
 
     final waveShift = animation.value * size.width;
     final baseHeight = size.height * (1 - waterLevel);
@@ -121,7 +117,8 @@ class _WaterTankPainter extends CustomPainter {
 
     const waveHeight = 8.0;
     for (double x = 0; x <= size.width; x += 5) {
-      final rawY = baseHeight + sin((x + waveShift) / size.width * 2 * pi) * waveHeight;
+      final rawY =
+          baseHeight + sin((x + waveShift) / size.width * 2 * pi) * waveHeight;
       final clampedY = rawY.clamp(0.0, size.height);
       wavePath.lineTo(x, clampedY);
     }

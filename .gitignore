@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Installer files (too large for GitHub)
+/installer_files/
+/android/app/keystore/
+
+# Local keystore properties
+/android/key.properties

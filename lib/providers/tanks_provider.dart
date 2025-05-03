@@ -11,7 +11,8 @@ class TanksProvider with ChangeNotifier {
   List<Tank> get tanks => _tanks;
 
   Future<void> fetchTanks(BuildContext context) async {
-    const url = 'https://smart-water-distribution-system.onrender.com/api/tank/customer-tanks';
+    const url =
+        'https://smart-water-distribution-system-q6x7.onrender.com/api/tank/customer-tanks';
 
     try {
       // 1) Retrieve the token from AuthProvider
@@ -35,7 +36,9 @@ class TanksProvider with ChangeNotifier {
         _tanks = data.map((tankJson) => Tank.fromJson(tankJson)).toList();
         notifyListeners();
       } else {
-        throw Exception('Failed to load tanks. Status code: ${response.statusCode}');
+        throw Exception(
+          'Failed to load tanks. Status code: ${response.statusCode}',
+        );
       }
     } catch (error) {
       debugPrint('Error in fetchTanks(): $error');
