@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:mytank/providers/update_data_provider.dart';
 import 'package:mytank/providers/auth_provider.dart';
 import 'package:mytank/utilities/constants.dart';
-import 'package:mytank/widgets/custom_input_field.dart';
 
 class UpdateDataScreen extends StatefulWidget {
   const UpdateDataScreen({super.key});
@@ -16,6 +16,7 @@ class UpdateDataScreen extends StatefulWidget {
 }
 
 class UpdateDataScreenState extends State<UpdateDataScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _identityNumberController = TextEditingController();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -27,6 +28,16 @@ class UpdateDataScreenState extends State<UpdateDataScreen> {
   // Set to track which fields are currently being edited
   final Set<String> _editingFields = {};
 
+  // Email validation regex
+  final RegExp _emailRegex = RegExp(
+    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+  );
+
+  // Phone validation regex (supports various formats)
+  final RegExp _phoneRegex = RegExp(
+    r'^(\+?[0-9]{1,4})?[0-9]{8,15}$',
+  );
+
   @override
   void initState() {
     super.initState();
@@ -34,6 +45,49 @@ class UpdateDataScreenState extends State<UpdateDataScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchUserData();
     });
+  }
+
+  // Validation methods
+  String? _validateIdentityNumber(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Identity number is required';
+    }
+    if (value.trim().length < 6) {
+      return 'Identity number must be at least 6 characters';
+    }
+    return null;
+  }
+
+  String? _validateName(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Full name is required';
+    }
+    if (value.trim().length < 2) {
+      return 'Name must be at least 2 characters';
+    }
+    return null;
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Email address is required';
+    }
+    if (!_emailRegex.hasMatch(value.trim())) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Phone number is required';
+    }
+    // Remove spaces and special characters for validation
+    String cleanPhone = value.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+    if (!_phoneRegex.hasMatch(cleanPhone)) {
+      return 'Please enter a valid phone number';
+    }
+    return null;
   }
 
   Future<void> _fetchUserData() async {
@@ -512,42 +566,58 @@ class UpdateDataScreenState extends State<UpdateDataScreen> {
                           ),
 
                           // Form fields
-                          Card(
-                            elevation: 2,
-                            margin: const EdgeInsets.only(bottom: 4),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              side: BorderSide(
-                                color: withValues(Constants.primaryColor, 0.1),
-                                width: 1,
+                          Form(
+                            key: _formKey,
+                            child: Card(
+                              elevation: 2,
+                              margin: const EdgeInsets.only(bottom: 4),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(
+                                  color: withValues(Constants.primaryColor, 0.1),
+                                  width: 1,
+                                ),
                               ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildInputField(
-                                    controller: _identityNumberController,
-                                    label: 'Identity Number',
-                                    icon: Icons.badge_outlined,
-                                  ),
-                                  _buildInputField(
-                                    controller: _nameController,
-                                    label: 'Full Name',
-                                    icon: Icons.person_outlined,
-                                  ),
-                                  _buildInputField(
-                                    controller: _emailController,
-                                    label: 'Email Address',
-                                    icon: Icons.email_outlined,
-                                  ),
-                                  _buildInputField(
-                                    controller: _phoneController,
-                                    label: 'Phone Number',
-                                    icon: Icons.phone_iphone_outlined,
-                                  ),
-                                ],
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildInputField(
+                                      controller: _identityNumberController,
+                                      label: 'Identity Number',
+                                      icon: Icons.badge_outlined,
+                                      validator: _validateIdentityNumber,
+                                      keyboardType: TextInputType.text,
+                                    ),
+                                    _buildInputField(
+                                      controller: _nameController,
+                                      label: 'Full Name',
+                                      icon: Icons.person_outlined,
+                                      validator: _validateName,
+                                      keyboardType: TextInputType.name,
+                                    ),
+                                    _buildInputField(
+                                      controller: _emailController,
+                                      label: 'Email Address',
+                                      icon: Icons.email_outlined,
+                                      validator: _validateEmail,
+                                      keyboardType: TextInputType.emailAddress,
+                                    ),
+                                    _buildInputField(
+                                      controller: _phoneController,
+                                      label: 'Phone Number',
+                                      icon: Icons.phone_iphone_outlined,
+                                      validator: _validatePhone,
+                                      keyboardType: TextInputType.phone,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(
+                                          RegExp(r'[0-9+\-\s\(\)]'),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -584,7 +654,32 @@ class UpdateDataScreenState extends State<UpdateDataScreen> {
                               borderRadius: BorderRadius.circular(16),
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(16),
-                                onTap: () async {
+                                onTap: updateDataProvider.isLoading ? null : () async {
+                                  // Validate form first
+                                  if (!_formKey.currentState!.validate()) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Row(
+                                          children: [
+                                            Icon(
+                                              Icons.warning_rounded,
+                                              color: Colors.white,
+                                            ),
+                                            SizedBox(width: 12),
+                                            Text('Please fix the errors above'),
+                                          ],
+                                        ),
+                                        backgroundColor: Constants.warningColor,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        margin: const EdgeInsets.all(12),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
                                   try {
                                     // Clear editing state
                                     setState(() {
@@ -681,26 +776,52 @@ class UpdateDataScreenState extends State<UpdateDataScreen> {
                                   }
                                 },
                                 child: Center(
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
-                                      Icon(
-                                        Icons.save_rounded,
-                                        color: Colors.white,
-                                        size: 24,
-                                      ),
-                                      SizedBox(width: 12),
-                                      Text(
-                                        'SAVE CHANGES',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          letterSpacing: 1,
+                                  child: updateDataProvider.isLoading
+                                      ? const Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor: AlwaysStoppedAnimation<Color>(
+                                                  Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(width: 12),
+                                            Text(
+                                              'UPDATING...',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 1,
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : const Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.save_rounded,
+                                              color: Colors.white,
+                                              size: 24,
+                                            ),
+                                            SizedBox(width: 12),
+                                            Text(
+                                              'SAVE CHANGES',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 1,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                    ],
-                                  ),
                                 ),
                               ),
                             ),
@@ -718,23 +839,93 @@ class UpdateDataScreenState extends State<UpdateDataScreen> {
     required TextEditingController controller,
     required String label,
     required IconData icon,
+    String? Function(String?)? validator,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     // Track edit state for each field
     final fieldKey = label.toLowerCase().replaceAll(' ', '_');
     final isEditing = _editingFields.contains(fieldKey);
 
-    return CustomInputField(
-      controller: controller,
-      label: label,
-      icon: icon,
-      readOnly: !isEditing,
-      onEditPressed: () {
-        setState(() {
-          if (!_editingFields.contains(fieldKey)) {
-            _editingFields.add(fieldKey);
-          }
-        });
-      },
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: withValues(Constants.accentColor, 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: withValues(Constants.primaryColor, 0.1),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Icon(
+                icon,
+                color: isEditing ? Constants.primaryColor : Constants.greyColor,
+                size: 22,
+              ),
+            ),
+            Expanded(
+              child: TextFormField(
+                controller: controller,
+                readOnly: !isEditing,
+                keyboardType: keyboardType,
+                inputFormatters: inputFormatters,
+                validator: validator,
+                style: TextStyle(
+                  color: isEditing ? Constants.blackColor : Constants.greyColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  labelText: label,
+                  labelStyle: TextStyle(
+                    color: isEditing ? Constants.primaryColor : Constants.greyColor,
+                    fontWeight: isEditing ? FontWeight.w600 : FontWeight.w500,
+                    fontSize: 15,
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  floatingLabelStyle: TextStyle(
+                    color: Constants.primaryColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 18,
+                    horizontal: 8,
+                  ),
+                  filled: false,
+                ),
+              ),
+            ),
+            if (!isEditing)
+              Container(
+                padding: const EdgeInsets.all(8),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.edit_rounded,
+                    color: Constants.primaryColor,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      if (!_editingFields.contains(fieldKey)) {
+                        _editingFields.add(fieldKey);
+                      }
+                    });
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 

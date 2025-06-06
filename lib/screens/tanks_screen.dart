@@ -205,7 +205,7 @@ class _TanksScreenState extends State<TanksScreen> {
                 headerSliverBuilder: (context, innerBoxIsScrolled) {
                   return [
                     SliverAppBar(
-                      expandedHeight: screenSize.height * 0.22,
+                      expandedHeight: screenSize.height * 0.16,
                       pinned: true,
                       backgroundColor: Constants.primaryColor,
                       elevation: innerBoxIsScrolled ? 4 : 0,
@@ -257,8 +257,9 @@ class _TanksScreenState extends State<TanksScreen> {
                           ),
                           child: SafeArea(
                             child: Padding(
-                              padding: const EdgeInsets.only(top: 15),
+                              padding: const EdgeInsets.only(top: 20),
                               child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   // Custom positioned title
                                   const Text(
@@ -270,7 +271,7 @@ class _TanksScreenState extends State<TanksScreen> {
                                       letterSpacing: 0.5,
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 6),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 12,
@@ -289,7 +290,6 @@ class _TanksScreenState extends State<TanksScreen> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(height: 15),
                                 ],
                               ),
                             ),
@@ -312,60 +312,143 @@ class _TanksScreenState extends State<TanksScreen> {
                             horizontal: 20,
                             vertical: 15,
                           ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 15,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: [
-                              BoxShadow(
-                                color: withValues(Constants.primaryColor, 0.06),
-                                blurRadius: 15,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<int>(
-                              isExpanded: true,
-                              value: _selectedTankIndex,
-                              hint: const Text('Select Tank'),
-                              icon: Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                color: Constants.primaryColor,
-                              ),
-                              items: List.generate(
-                                tanks.length,
-                                (index) => DropdownMenuItem<int>(
-                                  value: index,
-                                  child: Text(
-                                    'Tank ${tanks[index].id.substring(tanks[index].id.length - 6)}',
-                                    style: TextStyle(
-                                      color: Constants.blackColor,
-                                      fontWeight: FontWeight.w500,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Label for tank selection
+                              Padding(
+                                padding: const EdgeInsets.only(left: 5, bottom: 10),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: withValues(Constants.primaryColor, 0.1),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        Icons.water_drop_outlined,
+                                        color: Constants.primaryColor,
+                                        size: 18,
+                                      ),
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'Select Tank',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Constants.blackColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Dropdown container
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 15,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(15),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: withValues(Constants.primaryColor, 0.06),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(
+                                    canvasColor: Colors.transparent,
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<int>(
+                                      isExpanded: true,
+                                      value: _selectedTankIndex,
+                                      hint: const Text('Choose a tank'),
+                                      icon: Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                        color: Constants.primaryColor,
+                                      ),
+                                      dropdownColor: Colors.white,
+                                      borderRadius: BorderRadius.circular(15),
+                                      elevation: 8,
+                                      items: List.generate(
+                                        tanks.length,
+                                        (index) => DropdownMenuItem<int>(
+                                          value: index,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: _selectedTankIndex == index
+                                                  ? withValues(Constants.primaryColor, 0.1)
+                                                  : Colors.transparent,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.all(6),
+                                                  decoration: BoxDecoration(
+                                                    color: withValues(Constants.primaryColor, 0.15),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.water_drop_outlined,
+                                                    color: Constants.primaryColor,
+                                                    size: 16,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Tank ${tanks[index].id.substring(tanks[index].id.length - 6)}',
+                                                    style: TextStyle(
+                                                      color: Constants.blackColor,
+                                                      fontWeight: FontWeight.w500,
+                                                      fontSize: 14,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                    maxLines: 1,
+                                                  ),
+                                                ),
+                                                if (_selectedTankIndex == index)
+                                                  Icon(
+                                                    Icons.check_circle,
+                                                    color: Constants.primaryColor,
+                                                    size: 18,
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      onChanged: (value) {
+                                        if (value != null) {
+                                          setState(() {
+                                            _selectedTankIndex = value;
+                                          });
+
+                                          // Fetch detailed data for the newly selected tank
+                                          final tanksProvider = Provider.of<TanksProvider>(context, listen: false);
+                                          if (tanksProvider.tanks.isNotEmpty) {
+                                            final selectedTank = tanksProvider.tanks[value];
+                                            _fetchTankDetails(selectedTank.id);
+                                          }
+                                        }
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
-                              onChanged: (value) {
-                                if (value != null) {
-                                  setState(() {
-                                    _selectedTankIndex = value;
-                                  });
-
-                                  // Fetch detailed data for the newly selected tank
-                                  final tanksProvider = Provider.of<TanksProvider>(context, listen: false);
-                                  if (tanksProvider.tanks.isNotEmpty) {
-                                    final selectedTank = tanksProvider.tanks[value];
-                                    _fetchTankDetails(selectedTank.id);
-                                  }
-                                }
-                              },
-                            ),
+                            ],
                           ),
                         ),
 

@@ -5,6 +5,8 @@ import 'package:mytank/providers/main_tank_provider.dart';
 import 'package:mytank/utilities/route_manager.dart';
 import 'package:mytank/utilities/constants.dart';
 import 'package:mytank/widgets/water_tank_3d.dart';
+import 'package:mytank/models/user_model.dart';
+import 'package:mytank/services/user_service.dart';
 import 'package:provider/provider.dart';
 
 // Helper method to replace deprecated withOpacity
@@ -27,8 +29,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _waveController;
-
-
+  User? _currentUser;
+  bool _isLoadingUser = false;
+  String? _userError;
 
   @override
   void initState() {
@@ -38,9 +41,10 @@ class _HomeScreenState extends State<HomeScreen>
       duration: const Duration(seconds: 2),
     )..repeat(); // Wave animation loops indefinitely.
 
-    // Fetch main tank data when screen loads
+    // Fetch main tank data and user data when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchMainTankData();
+      _fetchUserData();
     });
   }
 
@@ -50,6 +54,35 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (authProvider.accessToken != null) {
       mainTankProvider.fetchMainTankData(authProvider);
+    }
+  }
+
+  Future<void> _fetchUserData() async {
+    setState(() {
+      _isLoadingUser = true;
+      _userError = null;
+    });
+
+    try {
+      final user = await UserService.getCurrentUser();
+      if (mounted) {
+        setState(() {
+          _currentUser = user;
+          _isLoadingUser = false;
+        });
+
+        // Update auth provider with real user name
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        authProvider.updateUserInfo(user.name);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _userError = e.toString();
+          _isLoadingUser = false;
+        });
+      }
+      debugPrint('❌ Error fetching user data: $e');
     }
   }
 
@@ -76,7 +109,8 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final userName = authProvider.userName ?? 'User';
+    // Use real user name from User model, fallback to auth provider, then to 'User'
+    final userName = _currentUser?.name ?? authProvider.userName ?? 'User';
 
     return Scaffold(
       backgroundColor: Constants.backgroundColor,
@@ -104,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen>
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            // Modern Drawer Header with Logo
+            // Modern Drawer Header with User Information
             Container(
               padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
               decoration: BoxDecoration(
@@ -126,51 +160,9 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Modern Logo
-                  Container(
-                    height: 60,
-                    width: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(40),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.water_drop_rounded,
-                      size: 35,
-                      color: Color(0xFF1976D2),
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  const Text(
-                    'Smart Tank',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  const Text(
-                    'Manage your water efficiently',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ],
-              ),
+              child: _isLoadingUser
+                  ? _buildLoadingHeader()
+                  : _buildUserHeader(),
             ),
 
             const SizedBox(height: 10),
@@ -259,19 +251,15 @@ class _HomeScreenState extends State<HomeScreen>
             Container(
               padding: const EdgeInsets.fromLTRB(20, 15, 20, 20),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Constants.primaryColor, Constants.secondaryColor],
-                ),
+                color: Colors.white,
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(30),
                   bottomRight: Radius.circular(30),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: withValues(Constants.primaryColor, 0.2),
-                    blurRadius: 10,
+                    color: withValues(Colors.black, 0.05),
+                    blurRadius: 15,
                     offset: const Offset(0, 5),
                   ),
                 ],
@@ -288,20 +276,24 @@ class _HomeScreenState extends State<HomeScreen>
                           height: 60,
                           width: 60,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Constants.primaryColor, Constants.secondaryColor],
+                            ),
                             borderRadius: BorderRadius.circular(15),
                             boxShadow: [
                               BoxShadow(
-                                color: withValues(Colors.black, 0.1),
+                                color: withValues(Constants.primaryColor, 0.2),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
                             ],
                           ),
-                          child: Icon(
+                          child: const Icon(
                             Icons.water_drop_rounded,
                             size: 35,
-                            color: Constants.primaryColor,
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(width: 15),
@@ -310,10 +302,10 @@ class _HomeScreenState extends State<HomeScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Welcome',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: Constants.greyColor,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -321,8 +313,8 @@ class _HomeScreenState extends State<HomeScreen>
                               const SizedBox(height: 4),
                               Text(
                                 userName,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: Constants.primaryColor,
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 0.5,
@@ -346,15 +338,15 @@ class _HomeScreenState extends State<HomeScreen>
                           margin: const EdgeInsets.only(top: 20),
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            color: withValues(Colors.white, 0.15),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: withValues(Colors.white, 0.2),
-                              width: 1,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Constants.primaryColor, Constants.secondaryColor],
                             ),
+                            borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: withValues(Colors.black, 0.05),
+                                color: withValues(Constants.primaryColor, 0.2),
                                 blurRadius: 10,
                                 offset: const Offset(0, 5),
                               ),
@@ -480,6 +472,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 ),
                                 const SizedBox(height: 8),
                                 Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       '${(waterLevel * 100).toInt()}%',
@@ -489,7 +482,6 @@ class _HomeScreenState extends State<HomeScreen>
                                         color: Constants.primaryColor,
                                       ),
                                     ),
-                                    const SizedBox(width: 16),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 16,
@@ -535,10 +527,13 @@ class _HomeScreenState extends State<HomeScreen>
                                 // Refresh button
                                 Center(
                                   child: ElevatedButton.icon(
-                                    onPressed: mainTankProvider.isLoading
+                                    onPressed: mainTankProvider.isLoading || _isLoadingUser
                                         ? null
-                                        : _fetchMainTankData,
-                                    icon: mainTankProvider.isLoading
+                                        : () {
+                                            _fetchMainTankData();
+                                            _fetchUserData();
+                                          },
+                                    icon: (mainTankProvider.isLoading || _isLoadingUser)
                                         ? const SizedBox(
                                             width: 16,
                                             height: 16,
@@ -551,9 +546,9 @@ class _HomeScreenState extends State<HomeScreen>
                                           )
                                         : const Icon(Icons.refresh_rounded),
                                     label: Text(
-                                      mainTankProvider.isLoading
+                                      (mainTankProvider.isLoading || _isLoadingUser)
                                           ? 'Refreshing...'
-                                          : 'Refresh Tank Data',
+                                          : 'Refresh Data',
                                     ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Constants.primaryColor,
@@ -789,6 +784,265 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ),
     );
+  }
+
+  // Helper method to build user header in drawer
+  Widget _buildUserHeader() {
+    final user = _currentUser;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final displayName = user?.name ?? authProvider.userName ?? 'User';
+    final displayEmail = user?.email ?? 'No email available';
+    final joinDate = user?.getFormattedJoinDate() ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // User Avatar
+        Row(
+          children: [
+            Container(
+              height: 70,
+              width: 70,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(40),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.network(
+                        user.avatarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return _buildDefaultAvatar();
+                        },
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Constants.primaryColor,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : _buildDefaultAvatar(),
+            ),
+            const SizedBox(width: 15),
+            // App branding (smaller)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Smart Tank',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Water Management',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // User Information
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              displayName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              displayEmail,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                letterSpacing: 0.2,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (joinDate.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                joinDate,
+                style: const TextStyle(
+                  color: Colors.white60,
+                  fontSize: 12,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Helper method to build default avatar
+  Widget _buildDefaultAvatar() {
+    final user = _currentUser;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final displayName = user?.name ?? authProvider.userName ?? 'User';
+    final initials = _getInitials(displayName);
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Constants.primaryColor.withAlpha(200),
+            Constants.secondaryColor.withAlpha(200),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Center(
+        child: Text(
+          initials,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper method to build loading header
+  Widget _buildLoadingHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            // Loading avatar placeholder
+            Container(
+              height: 70,
+              width: 70,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(50),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(width: 15),
+            // App branding
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Smart Tank',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Water Management',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // Loading placeholders for user info
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 24,
+              width: 150,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(50),
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              height: 16,
+              width: 200,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(30),
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              height: 14,
+              width: 120,
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(20),
+                borderRadius: BorderRadius.circular(7),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Helper method to get user initials
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'U';
+
+    final words = name.trim().split(' ');
+    if (words.length == 1) {
+      return words[0].substring(0, 1).toUpperCase();
+    } else {
+      return '${words[0].substring(0, 1)}${words[1].substring(0, 1)}'.toUpperCase();
+    }
   }
 
 

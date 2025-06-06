@@ -332,24 +332,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
-              actions: [
-                Container(
-                  margin: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: withValues(Colors.white, 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.settings_rounded,
-                      color: Colors.white,
-                    ),
-                    onPressed: () {
-                      // Navigate to settings when implemented
-                    },
-                  ),
-                ),
-              ],
               flexibleSpace: FlexibleSpaceBar(
                 title: null, // Remove default title
                 centerTitle: true,
