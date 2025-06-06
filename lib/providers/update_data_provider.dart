@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
 import '../providers/auth_provider.dart';
 
 class UpdateDataProvider with ChangeNotifier {
@@ -157,6 +158,81 @@ class UpdateDataProvider with ChangeNotifier {
     } finally {
       _isLoading = false;
       debugPrint('🔄 Update data completed. Success: ${_errorMessage == null}');
+      notifyListeners();
+    }
+  }
+
+  // Upload avatar image
+  Future<bool> uploadAvatar(File imageFile, AuthProvider authProvider) async {
+    if (authProvider.accessToken == null) {
+      _errorMessage = 'Not authenticated';
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      debugPrint('📸 Starting avatar upload...');
+
+      final uri = Uri.parse(
+        'https://smart-water-distribution-system-q6x7.onrender.com/api/customer/upload-avatar',
+      );
+
+      var request = http.MultipartRequest('POST', uri);
+
+      // Add headers
+      request.headers.addAll({
+        'Cookie': 'access_token=${authProvider.accessToken}',
+      });
+
+      // Add file
+      var multipartFile = await http.MultipartFile.fromPath(
+        'avatar',
+        imageFile.path,
+      );
+      request.files.add(multipartFile);
+
+      debugPrint('📤 Sending avatar upload request...');
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      debugPrint('📥 Avatar upload response status: ${response.statusCode}');
+      debugPrint('📥 Avatar upload response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          debugPrint('✅ Avatar uploaded successfully');
+
+          // Update local user data with new avatar URL if provided
+          if (responseData['avatarUrl'] != null && _userData != null) {
+            _userData!['avatar_url'] = responseData['avatarUrl'];
+            debugPrint('✅ Updated local avatar URL');
+          }
+
+          return true;
+        } else {
+          debugPrint('❌ Avatar upload failed: ${responseData['message']}');
+          _errorMessage = responseData['message'] ?? 'Failed to upload avatar';
+          return false;
+        }
+      } else {
+        debugPrint('❌ Avatar upload failed with status: ${response.statusCode}');
+        _errorMessage = 'Failed to upload avatar: ${response.statusCode}';
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Exception during avatar upload: $e');
+      _errorMessage = 'Error uploading avatar: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      debugPrint('🔄 Avatar upload completed');
       notifyListeners();
     }
   }

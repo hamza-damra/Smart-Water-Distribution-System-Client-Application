@@ -8,6 +8,7 @@ class User {
   final List<String> bills;
   final String createdAt;
   final String updatedAt;
+  final String? avatarUrl;
 
   User({
     required this.id,
@@ -19,6 +20,7 @@ class User {
     required this.bills,
     required this.createdAt,
     required this.updatedAt,
+    this.avatarUrl,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class User {
       bills: List<String>.from(json['bills'] ?? []),
       createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'] ?? '',
+      avatarUrl: json['avatar_url'],
     );
   }
 

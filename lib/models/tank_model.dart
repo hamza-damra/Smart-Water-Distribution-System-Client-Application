@@ -115,6 +115,25 @@ class Tank {
     return usageData;
   }
 
+  // Get all daily usage data for the entire month (30 days)
+  List<double> getAllDailyUsageData() {
+    if (amountPerMonth.isEmpty || amountPerMonth['days'] == null) {
+      return List.filled(30, 0.0);
+    }
+
+    Map<String, dynamic> days = amountPerMonth['days'];
+    List<double> usageData = [];
+
+    // Get data for all 30 days of the month
+    for (int day = 1; day <= 30; day++) {
+      final dayStr = day.toString();
+      final usage = days[dayStr];
+      usageData.add(usage != null && usage is num ? usage.toDouble() : 0.0);
+    }
+
+    return usageData;
+  }
+
   // Get day labels for the chart
   List<String> getUsageHistoryLabels() {
     final now = DateTime.now();

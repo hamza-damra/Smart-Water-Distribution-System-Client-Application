@@ -871,13 +871,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _selectedImage != null
                             ? FileImage(_selectedImage!)
                             : _user?.avatarUrl != null &&
-                                _user!.avatarUrl.isNotEmpty
-                            ? NetworkImage(_user!.avatarUrl)
+                                _user!.avatarUrl?.isNotEmpty == true
+                            ? NetworkImage(_user!.avatarUrl!)
                             : null,
                     child:
                         (_selectedImage == null &&
                                 (_user?.avatarUrl == null ||
-                                    _user!.avatarUrl.isEmpty))
+                                    _user!.avatarUrl?.isEmpty != false))
                             ? Text(
                               _user?.name.isNotEmpty == true
                                   ? _user!.name[0].toUpperCase()
