@@ -12,6 +12,7 @@ import 'package:mytank/screens/bills_screen.dart';
 import 'package:mytank/screens/payment_screen_custom.dart';
 import 'package:mytank/screens/splash_screen.dart';
 import 'package:mytank/screens/bill_details_screen.dart';
+import 'package:mytank/screens/about_us_screen.dart';
 import 'package:mytank/models/bill_model.dart';
 
 class RouteManager {
@@ -28,6 +29,7 @@ class RouteManager {
   static const String billsRoute = '/bills';
   static const String paymentRoute = '/payment';
   static const String billDetailsRoute = '/billDetails';
+  static const String aboutUsRoute = '/aboutUs';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -62,6 +64,8 @@ class RouteManager {
       case billDetailsRoute:
         final bill = settings.arguments as Bill;
         return MaterialPageRoute(builder: (_) => BillDetailsScreen(bill: bill));
+      case aboutUsRoute:
+        return MaterialPageRoute(builder: (_) => const AboutUsScreen());
       default:
         throw const FormatException('Route not found! Check routes again.');
     }
