@@ -12,7 +12,11 @@ import 'package:mytank/screens/bills_screen.dart';
 import 'package:mytank/screens/payment_screen_custom.dart';
 import 'package:mytank/screens/splash_screen.dart';
 import 'package:mytank/screens/bill_details_screen.dart';
+<<<<<<< HEAD
 import 'package:mytank/screens/notifications_screen.dart';
+=======
+import 'package:mytank/screens/about_us_screen.dart';
+>>>>>>> 99e9e6ccff93714b0cc156961ccbda337af575c6
 import 'package:mytank/models/bill_model.dart';
 
 class RouteManager {
@@ -29,7 +33,11 @@ class RouteManager {
   static const String billsRoute = '/bills';
   static const String paymentRoute = '/payment';
   static const String billDetailsRoute = '/billDetails';
+<<<<<<< HEAD
   static const String notificationsRoute = '/notifications';
+=======
+  static const String aboutUsRoute = '/aboutUs';
+>>>>>>> 99e9e6ccff93714b0cc156961ccbda337af575c6
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -64,8 +72,13 @@ class RouteManager {
       case billDetailsRoute:
         final bill = settings.arguments as Bill;
         return MaterialPageRoute(builder: (_) => BillDetailsScreen(bill: bill));
+<<<<<<< HEAD
       case notificationsRoute:
         return MaterialPageRoute(builder: (_) => const NotificationsScreen());
+=======
+      case aboutUsRoute:
+        return MaterialPageRoute(builder: (_) => const AboutUsScreen());
+>>>>>>> 99e9e6ccff93714b0cc156961ccbda337af575c6
       default:
         throw const FormatException('Route not found! Check routes again.');
     }

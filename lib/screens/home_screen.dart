@@ -310,6 +310,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 // Navigate to help when implemented
               },
             ),
+            _buildDrawerItem(
+              icon: Icons.info_outline_rounded,
+              title: 'About Us',
+              iconColor: Colors.grey.shade600,
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, RouteManager.aboutUsRoute);
+              },
+            ),
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
