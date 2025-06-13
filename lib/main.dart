@@ -7,6 +7,7 @@ import 'package:mytank/providers/tanks_provider.dart';
 import 'package:mytank/providers/bills_provider.dart';
 import 'package:mytank/providers/payment_provider.dart';
 import 'package:mytank/providers/main_tank_provider.dart';
+import 'package:mytank/providers/notification_provider.dart';
 import 'package:mytank/screens/splash_screen.dart';
 import 'package:mytank/utilities/route_manager.dart';
 import 'package:mytank/utilities/back_button_handler.dart';
@@ -50,6 +51,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => BillsProvider()),
         ChangeNotifierProvider(create: (context) => PaymentProvider()),
         ChangeNotifierProvider(create: (context) => MainTankProvider()),
+        ChangeNotifierProvider(create: (context) => NotificationProvider()),
       ],
       child: Builder(
         builder:

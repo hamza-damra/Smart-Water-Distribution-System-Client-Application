@@ -6,6 +6,7 @@ class User {
   final String phone;
   final List<String> tanks;
   final List<String> bills;
+  final List<dynamic> notifications;
   final String createdAt;
   final String updatedAt;
   final String? avatarUrl;
@@ -18,6 +19,7 @@ class User {
     required this.phone,
     required this.tanks,
     required this.bills,
+    required this.notifications,
     required this.createdAt,
     required this.updatedAt,
     this.avatarUrl,
@@ -32,6 +34,7 @@ class User {
       phone: json['phone'] ?? '',
       tanks: List<String>.from(json['tanks'] ?? []),
       bills: List<String>.from(json['bills'] ?? []),
+      notifications: List<dynamic>.from(json['notifications'] ?? []),
       createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'] ?? '',
       avatarUrl: json['avatar_url'],
@@ -43,8 +46,18 @@ class User {
     try {
       final DateTime date = DateTime.parse(createdAt);
       final List<String> months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       return 'Joined: ${months[date.month - 1]} ${date.year}';
     } catch (e) {

@@ -12,7 +12,7 @@ class TanksProvider with ChangeNotifier {
 
   Future<void> fetchTanks(BuildContext context) async {
     const url =
-        'https://smart-water-distribution-system-q6x7.onrender.com/api/tank/customer-tanks';
+        'https://smart-water-distribution-system-vll8.onrender.com/api/tank/customer-tanks';
 
     try {
       // 1) Retrieve the token from AuthProvider

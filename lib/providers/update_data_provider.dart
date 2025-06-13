@@ -29,7 +29,7 @@ class UpdateDataProvider with ChangeNotifier {
       debugPrint('🔍 Fetching user profile data...');
 
       final apiUrl =
-          'https://smart-water-distribution-system-q6x7.onrender.com/api/customer/current-user';
+          'https://smart-water-distribution-system-vll8.onrender.com/api/customer/current-user';
       debugPrint('🌐 Profile API URL: $apiUrl');
 
       final headers = {
@@ -90,7 +90,7 @@ class UpdateDataProvider with ChangeNotifier {
     notifyListeners();
 
     final Uri url = Uri.parse(
-      'https://smart-water-distribution-system-q6x7.onrender.com/api/customer/update-data',
+      'https://smart-water-distribution-system-vll8.onrender.com/api/customer/update-data',
     );
 
     debugPrint('🌐 Update data API URL: ${url.toString()}');
@@ -178,7 +178,7 @@ class UpdateDataProvider with ChangeNotifier {
       debugPrint('📸 Starting avatar upload...');
 
       final uri = Uri.parse(
-        'https://smart-water-distribution-system-q6x7.onrender.com/api/customer/upload-avatar',
+        'https://smart-water-distribution-system-vll8.onrender.com/api/customer/upload-avatar',
       );
 
       var request = http.MultipartRequest('POST', uri);
@@ -222,7 +222,9 @@ class UpdateDataProvider with ChangeNotifier {
           return false;
         }
       } else {
-        debugPrint('❌ Avatar upload failed with status: ${response.statusCode}');
+        debugPrint(
+          '❌ Avatar upload failed with status: ${response.statusCode}',
+        );
         _errorMessage = 'Failed to upload avatar: ${response.statusCode}';
         return false;
       }

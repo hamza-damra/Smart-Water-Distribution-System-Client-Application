@@ -174,7 +174,7 @@ class TankProvider with ChangeNotifier {
       }
 
       final apiUrl =
-          'https://smart-water-distribution-system-q6x7.onrender.com/api/tank/customer-tanks';
+          'https://smart-water-distribution-system-vll8.onrender.com/api/tank/customer-tanks';
       debugPrint('🌐 Tank API URL: $apiUrl');
 
       // Prepare headers with token as cookie

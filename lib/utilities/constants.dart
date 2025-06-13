@@ -51,7 +51,12 @@ class Constants {
   static const Duration defaultAnimationDuration = Duration(milliseconds: 300);
 
   // API endpoints
-  static const String baseUrl = 'http://54.208.4.191/api';
+  static const String baseUrl =
+      'https://smart-water-distribution-system-q6x7.onrender.com/api';
   static const String loginEndpoint = '$baseUrl/user/login';
   static const String userInfoEndpoint = '$baseUrl/user/get-user-info-by-id';
+
+  // Socket.IO server URL for real-time notifications
+  static const String socketUrl =
+      'https://smart-water-distribution-system-vll8.onrender.com';
 }

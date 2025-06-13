@@ -1,10 +1,13 @@
-
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
 // Helper method to replace deprecated withOpacity
-Color withValues(Color color, double opacity) =>
-    Color.fromRGBO(color.red, color.green, color.blue, opacity);
+Color withValues(Color color, double opacity) => Color.fromRGBO(
+  (color.r * 255.0).round() & 0xff,
+  (color.g * 255.0).round() & 0xff,
+  (color.b * 255.0).round() & 0xff,
+  opacity,
+);
 
 class WaterTank3D extends StatefulWidget {
   final double waterLevel; // 0.0 to 1.0
@@ -37,13 +40,9 @@ class _WaterTank3DState extends State<WaterTank3D>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    _levelAnimation = Tween<double>(
-      begin: 0.0,
-      end: widget.waterLevel,
-    ).animate(CurvedAnimation(
-      parent: _levelController,
-      curve: Curves.easeInOut,
-    ));
+    _levelAnimation = Tween<double>(begin: 0.0, end: widget.waterLevel).animate(
+      CurvedAnimation(parent: _levelController, curve: Curves.easeInOut),
+    );
 
     // Wave animation for realistic water movement
     _waveController = AnimationController(
@@ -66,10 +65,9 @@ class _WaterTank3DState extends State<WaterTank3D>
       _levelAnimation = Tween<double>(
         begin: _levelAnimation.value,
         end: widget.waterLevel,
-      ).animate(CurvedAnimation(
-        parent: _levelController,
-        curve: Curves.easeInOut,
-      ));
+      ).animate(
+        CurvedAnimation(parent: _levelController, curve: Curves.easeInOut),
+      );
       _levelController
         ..reset()
         ..forward();
@@ -81,18 +79,6 @@ class _WaterTank3DState extends State<WaterTank3D>
     _levelController.dispose();
     _waveController.dispose();
     super.dispose();
-  }
-
-  String _getStatusText() {
-    if (widget.waterLevel >= 0.75) return 'High';
-    if (widget.waterLevel >= 0.25) return 'Medium';
-    return 'Low';
-  }
-
-  Color _getStatusColor() {
-    if (widget.waterLevel >= 0.75) return Colors.green;
-    if (widget.waterLevel >= 0.25) return Colors.orange;
-    return Colors.red;
   }
 
   @override
@@ -144,7 +130,10 @@ class _WaterTank3DState extends State<WaterTank3D>
               borderRadius: BorderRadius.circular(24),
               child: Center(
                 child: AnimatedBuilder(
-                  animation: Listenable.merge([_levelAnimation, _waveAnimation]),
+                  animation: Listenable.merge([
+                    _levelAnimation,
+                    _waveAnimation,
+                  ]),
                   builder: (context, child) {
                     return CustomPaint(
                       painter: Professional3DTankPainter(
@@ -192,15 +181,16 @@ class _WaterTank3DState extends State<WaterTank3D>
           width: 20,
           height: 2,
           decoration: BoxDecoration(
-            gradient: isActive
-                ? LinearGradient(
-                    colors: [
-                      Colors.blue.shade400,
-                      Colors.blue.shade600,
-                      Colors.blue.shade700,
-                    ],
-                  )
-                : null,
+            gradient:
+                isActive
+                    ? LinearGradient(
+                      colors: [
+                        Colors.blue.shade400,
+                        Colors.blue.shade600,
+                        Colors.blue.shade700,
+                      ],
+                    )
+                    : null,
             color: isActive ? null : Colors.grey.shade400,
             borderRadius: BorderRadius.circular(1),
           ),
@@ -223,12 +213,9 @@ class _WaterTank3DState extends State<WaterTank3D>
 
 class Professional3DTankPainter extends CustomPainter {
   final double waterLevel; // 0.0 → 1.0
-  final double wavePhase;   // 0.0 → 2π for wave animation
+  final double wavePhase; // 0.0 → 2π for wave animation
 
-  Professional3DTankPainter({
-    required this.waterLevel,
-    this.wavePhase = 0.0,
-  });
+  Professional3DTankPainter({required this.waterLevel, this.wavePhase = 0.0});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -253,9 +240,10 @@ class Professional3DTankPainter extends CustomPainter {
     // 🌟 ENHANCED 3D SHADOWS FOR DEPTH
 
     // Primary shadow (sharp, close to tank)
-    final primaryShadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.18)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
+    final primaryShadowPaint =
+        Paint()
+          ..color = withValues(Colors.black, 0.18)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(c.dx + 6, c.dy + h * 0.42),
@@ -266,9 +254,10 @@ class Professional3DTankPainter extends CustomPainter {
     );
 
     // Secondary shadow (softer, wider)
-    final secondaryShadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.08)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
+    final secondaryShadowPaint =
+        Paint()
+          ..color = withValues(Colors.black, 0.08)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(c.dx + 10, c.dy + h * 0.46),
@@ -279,9 +268,10 @@ class Professional3DTankPainter extends CustomPainter {
     );
 
     // Ambient shadow (very soft, largest)
-    final ambientShadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.04)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 35);
+    final ambientShadowPaint =
+        Paint()
+          ..color = withValues(Colors.black, 0.04)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 35);
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(c.dx + 15, c.dy + h * 0.5),
@@ -294,7 +284,10 @@ class Professional3DTankPainter extends CustomPainter {
 
   void _drawTankBody(Canvas canvas, Offset c, double w, double h) {
     final bodyRect = Rect.fromCenter(center: c, width: w, height: h);
-    final bodyRRect = RRect.fromRectAndRadius(bodyRect, const Radius.circular(15));
+    final bodyRRect = RRect.fromRectAndRadius(
+      bodyRect,
+      const Radius.circular(15),
+    );
 
     // 🌟 ENHANCED 3D CYLINDRICAL BODY WITH REALISTIC LIGHTING
 
@@ -303,22 +296,23 @@ class Professional3DTankPainter extends CustomPainter {
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
       colors: [
-        Colors.grey.shade100,  // Left highlight
+        Colors.grey.shade100, // Left highlight
         Colors.grey.shade200,
         Colors.grey.shade300,
         Colors.grey.shade400,
-        Colors.grey.shade500,  // Center shadow
+        Colors.grey.shade500, // Center shadow
         Colors.grey.shade600,
         Colors.grey.shade500,
         Colors.grey.shade400,
         Colors.grey.shade300,
         Colors.grey.shade200,
-        Colors.grey.shade100,  // Right highlight
+        Colors.grey.shade100, // Right highlight
       ],
       stops: const [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
     );
 
-    final bodyPaint = Paint()..shader = cylindricalGradient.createShader(bodyRect);
+    final bodyPaint =
+        Paint()..shader = cylindricalGradient.createShader(bodyRect);
     canvas.drawRRect(bodyRRect, bodyPaint);
 
     // Left highlight strip (simulates light reflection on cylinder)
@@ -328,14 +322,17 @@ class Professional3DTankPainter extends CustomPainter {
       w * 0.08,
       h * 0.8,
     );
-    final leftHighlightRRect = RRect.fromRectAndRadius(leftHighlight, const Radius.circular(8));
+    final leftHighlightRRect = RRect.fromRectAndRadius(
+      leftHighlight,
+      const Radius.circular(8),
+    );
 
     final highlightGradient = LinearGradient(
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
       colors: [
-        Colors.white.withOpacity(0.6),
-        Colors.white.withOpacity(0.3),
+        withValues(Colors.white, 0.6),
+        withValues(Colors.white, 0.3),
         Colors.transparent,
       ],
     );
@@ -352,15 +349,18 @@ class Professional3DTankPainter extends CustomPainter {
       w * 0.07,
       h * 0.9,
     );
-    final rightShadowRRect = RRect.fromRectAndRadius(rightShadow, const Radius.circular(6));
+    final rightShadowRRect = RRect.fromRectAndRadius(
+      rightShadow,
+      const Radius.circular(6),
+    );
 
     final shadowGradient = LinearGradient(
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
       colors: [
         Colors.transparent,
-        Colors.black.withOpacity(0.15),
-        Colors.black.withOpacity(0.25),
+        withValues(Colors.black, 0.15),
+        withValues(Colors.black, 0.25),
       ],
     );
 
@@ -371,12 +371,15 @@ class Professional3DTankPainter extends CustomPainter {
 
     // Inner rim for depth
     final innerRect = bodyRect.deflate(2);
-    final innerRRect = RRect.fromRectAndRadius(innerRect, const Radius.circular(13));
+    final innerRRect = RRect.fromRectAndRadius(
+      innerRect,
+      const Radius.circular(13),
+    );
 
     canvas.drawRRect(
       innerRRect,
       Paint()
-        ..color = Colors.grey.shade600.withOpacity(0.4)
+        ..color = withValues(Colors.grey.shade600, 0.4)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1,
     );
@@ -394,7 +397,7 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawRRect(
       bodyRRect.inflate(1),
       Paint()
-        ..color = Colors.white.withOpacity(0.1)
+        ..color = withValues(Colors.white, 0.1)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
@@ -413,10 +416,10 @@ class Professional3DTankPainter extends CustomPainter {
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: [
-        Colors.blue.shade200.withOpacity(0.75), // More transparent at top
-        Colors.blue.shade400.withOpacity(0.8),
-        Colors.blue.shade600.withOpacity(0.85),
-        Colors.blue.shade800.withOpacity(0.9),
+        withValues(Colors.blue.shade200, 0.75), // More transparent at top
+        withValues(Colors.blue.shade400, 0.8),
+        withValues(Colors.blue.shade600, 0.85),
+        withValues(Colors.blue.shade800, 0.9),
       ],
       stops: const [0, 0.3, 0.7, 1],
     );
@@ -441,11 +444,11 @@ class Professional3DTankPainter extends CustomPainter {
       center: const Alignment(-0.2, -0.3), // Light reflection point
       radius: 1.2,
       colors: [
-        Colors.white.withOpacity(0.6),           // Bright reflection
-        Colors.blue.shade200.withOpacity(0.8),
-        Colors.blue.shade400.withOpacity(0.85),
-        Colors.blue.shade600.withOpacity(0.8),
-        Colors.blue.shade800.withOpacity(0.75),
+        withValues(Colors.white, 0.6), // Bright reflection
+        withValues(Colors.blue.shade200, 0.8),
+        withValues(Colors.blue.shade400, 0.85),
+        withValues(Colors.blue.shade600, 0.8),
+        withValues(Colors.blue.shade800, 0.75),
       ],
       stops: const [0, 0.2, 0.5, 0.8, 1],
     );
@@ -471,7 +474,7 @@ class Professional3DTankPainter extends CustomPainter {
         canvas.drawOval(
           rippleEllipse,
           Paint()
-            ..color = Colors.white.withOpacity(rippleOpacity)
+            ..color = withValues(Colors.white, rippleOpacity)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1,
         );
@@ -488,7 +491,7 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawOval(
       highlightEllipse,
       Paint()
-        ..color = Colors.white.withOpacity(0.5)
+        ..color = withValues(Colors.white, 0.5)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
     );
 
@@ -502,7 +505,7 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawOval(
       smallReflection,
       Paint()
-        ..color = Colors.white.withOpacity(0.3)
+        ..color = withValues(Colors.white, 0.3)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
     );
   }
@@ -520,7 +523,7 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawOval(
       domeShadow,
       Paint()
-        ..color = Colors.black.withOpacity(0.15)
+        ..color = withValues(Colors.black, 0.15)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
     );
 
@@ -536,12 +539,12 @@ class Professional3DTankPainter extends CustomPainter {
       center: const Alignment(-0.4, -0.5), // Light source from top-left
       radius: 1.4,
       colors: [
-        Colors.white.withOpacity(0.95),        // Bright highlight
-        Colors.grey.shade50.withOpacity(0.9),
-        Colors.grey.shade200.withOpacity(0.85),
-        Colors.grey.shade400.withOpacity(0.8),
-        Colors.grey.shade600.withOpacity(0.75),
-        Colors.grey.shade800.withOpacity(0.7),
+        withValues(Colors.white, 0.95), // Bright highlight
+        withValues(Colors.grey.shade50, 0.9),
+        withValues(Colors.grey.shade200, 0.85),
+        withValues(Colors.grey.shade400, 0.8),
+        withValues(Colors.grey.shade600, 0.75),
+        withValues(Colors.grey.shade800, 0.7),
       ],
       stops: const [0, 0.15, 0.35, 0.6, 0.8, 1],
     );
@@ -590,20 +593,20 @@ class Professional3DTankPainter extends CustomPainter {
       Offset(inletCenter.dx + 2, inletCenter.dy + 2),
       inletRadius + 3,
       Paint()
-        ..color = Colors.black.withOpacity(0.3)
+        ..color = withValues(Colors.black, 0.3)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
     );
 
     canvas.drawCircle(
       inletCenter,
       inletRadius + 1,
-      Paint()..color = Colors.black.withOpacity(0.5),
+      Paint()..color = withValues(Colors.black, 0.5),
     );
 
     // Inlet opening with depth gradient
     final inletGradient = RadialGradient(
       colors: [
-        Colors.black.withOpacity(0.8),
+        withValues(Colors.black, 0.8),
         Colors.grey.shade800,
         Colors.grey.shade600,
         Colors.grey.shade500,
@@ -613,9 +616,10 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawCircle(
       inletCenter,
       inletRadius,
-      Paint()..shader = inletGradient.createShader(
-        Rect.fromCircle(center: inletCenter, radius: inletRadius)
-      ),
+      Paint()
+        ..shader = inletGradient.createShader(
+          Rect.fromCircle(center: inletCenter, radius: inletRadius),
+        ),
     );
 
     // Enhanced glossy highlights for realism
@@ -628,7 +632,7 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawOval(
       primaryHighlight,
       Paint()
-        ..color = Colors.white.withOpacity(0.8)
+        ..color = withValues(Colors.white, 0.8)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
     );
 
@@ -642,7 +646,7 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawOval(
       secondaryHighlight,
       Paint()
-        ..color = Colors.white.withOpacity(0.6)
+        ..color = withValues(Colors.white, 0.6)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
     );
 
@@ -656,7 +660,7 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawOval(
       tertiaryHighlight,
       Paint()
-        ..color = Colors.white.withOpacity(0.4)
+        ..color = withValues(Colors.white, 0.4)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1),
     );
 
@@ -673,7 +677,7 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawOval(
       ringEllipse.deflate(3),
       Paint()
-        ..color = Colors.grey.shade400.withOpacity(0.6)
+        ..color = withValues(Colors.grey.shade400, 0.6)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1,
     );
@@ -691,8 +695,8 @@ class Professional3DTankPainter extends CustomPainter {
 
     final primaryShadowGradient = RadialGradient(
       colors: [
-        Colors.black.withOpacity(0.15),
-        Colors.black.withOpacity(0.08),
+        withValues(Colors.black, 0.15),
+        withValues(Colors.black, 0.08),
         Colors.transparent,
       ],
       stops: const [0, 0.5, 1],
@@ -715,7 +719,7 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawOval(
       secondaryShadow,
       Paint()
-        ..color = Colors.black.withOpacity(0.05)
+        ..color = withValues(Colors.black, 0.05)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15),
     );
 
@@ -782,14 +786,14 @@ class Professional3DTankPainter extends CustomPainter {
       Offset(valveCenter.dx + 2, valveCenter.dy + 2),
       valveSize + 1.5,
       Paint()
-        ..color = Colors.black.withOpacity(0.25)
+        ..color = withValues(Colors.black, 0.25)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
     );
 
     canvas.drawCircle(
       Offset(valveCenter.dx + 1, valveCenter.dy + 1),
       valveSize + 0.5,
-      Paint()..color = Colors.black.withOpacity(0.3),
+      Paint()..color = withValues(Colors.black, 0.3),
     );
 
     // Enhanced valve body with metallic finish
@@ -806,17 +810,21 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawCircle(
       valveCenter,
       valveSize,
-      Paint()..shader = valveGradient.createShader(
-        Rect.fromCircle(center: valveCenter, radius: valveSize)
-      ),
+      Paint()
+        ..shader = valveGradient.createShader(
+          Rect.fromCircle(center: valveCenter, radius: valveSize),
+        ),
     );
 
     // Valve highlight for 3D effect
     canvas.drawCircle(
-      Offset(valveCenter.dx - valveSize * 0.4, valveCenter.dy - valveSize * 0.4),
+      Offset(
+        valveCenter.dx - valveSize * 0.4,
+        valveCenter.dy - valveSize * 0.4,
+      ),
       valveSize * 0.25,
       Paint()
-        ..color = Colors.white.withOpacity(0.5)
+        ..color = withValues(Colors.white, 0.5)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1),
     );
 
@@ -833,7 +841,7 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawOval(
       tankBottom.deflate(2),
       Paint()
-        ..color = Colors.grey.shade500.withOpacity(0.5)
+        ..color = withValues(Colors.grey.shade500, 0.5)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1,
     );
@@ -851,7 +859,7 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawOval(
       baseRing.deflate(2),
       Paint()
-        ..color = Colors.grey.shade300.withOpacity(0.4)
+        ..color = withValues(Colors.grey.shade300, 0.4)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );
@@ -860,7 +868,7 @@ class Professional3DTankPainter extends CustomPainter {
     canvas.drawOval(
       baseRing.inflate(1),
       Paint()
-        ..color = Colors.white.withOpacity(0.1)
+        ..color = withValues(Colors.white, 0.1)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
@@ -869,5 +877,6 @@ class Professional3DTankPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant Professional3DTankPainter oldDelegate) =>
-      oldDelegate.waterLevel != waterLevel || oldDelegate.wavePhase != wavePhase;
+      oldDelegate.waterLevel != waterLevel ||
+      oldDelegate.wavePhase != wavePhase;
 }

@@ -21,14 +21,22 @@ class BackButtonHandler {
     );
   }
 
-  /// Create a WillPopScope wrapper for handling back button presses
+  /// Create a PopScope wrapper for handling back button presses
   static Widget wrapWithBackHandler(
     BuildContext context,
     Widget child, {
     Future<bool> Function()? onWillPop,
   }) {
-    return WillPopScope(
-      onWillPop: onWillPop ?? () async => true,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) async {
+        if (!didPop && onWillPop != null) {
+          final shouldPop = await onWillPop();
+          if (shouldPop && context.mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      },
       child: child,
     );
   }

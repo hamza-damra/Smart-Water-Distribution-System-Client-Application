@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mytank/utilities/constants.dart';
 import 'package:mytank/utilities/route_manager.dart';
 import 'package:provider/provider.dart';
 import 'package:mytank/providers/auth_provider.dart';
@@ -535,7 +533,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 fontWeight: FontWeight.w500,
                                 letterSpacing:
                                     0.7, // Increased letter spacing for modern look
-                                shadows: const [
+                                shadows: [
                                   Shadow(
                                     color: Color(
                                       0x4D006064,

@@ -45,7 +45,7 @@ class PaymentProvider with ChangeNotifier {
       debugPrint('🔍 Initializing payment for bill ID: $billId');
 
       final apiUrl =
-          'https://smart-water-distribution-system-q6x7.onrender.com/api/bill/$billId/pay';
+          'https://smart-water-distribution-system-vll8.onrender.com/api/bill/$billId/pay';
       debugPrint('🌐 Payment API URL: $apiUrl');
 
       final headers = {
@@ -101,7 +101,7 @@ class PaymentProvider with ChangeNotifier {
       debugPrint('🔍 Confirming payment success for bill ID: $billId');
 
       final apiUrl =
-          'https://smart-water-distribution-system-q6x7.onrender.com/api/bill/$billId/payment-success';
+          'https://smart-water-distribution-system-vll8.onrender.com/api/bill/$billId/payment-success';
       debugPrint('🌐 Payment confirmation API URL: $apiUrl');
 
       final headers = {

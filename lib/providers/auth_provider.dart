@@ -2,6 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mytank/utilities/token_manager.dart';
+import 'package:mytank/utilities/constants.dart';
+import 'package:mytank/providers/notification_provider.dart';
+import 'package:provider/provider.dart';
 import 'dart:convert';
 
 class AuthProvider with ChangeNotifier {
@@ -22,6 +25,27 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Initialize real-time notifications (to be called after login)
+  void initializeRealTimeNotifications(BuildContext context) {
+    if (_accessToken != null && _userId != null) {
+      try {
+        // Get notification provider and initialize real-time notifications
+        final notificationProvider = Provider.of<NotificationProvider>(
+          context,
+          listen: false,
+        );
+
+        notificationProvider.initializeRealTimeNotifications(
+          _userId!,
+          _accessToken!,
+        );
+        debugPrint('✅ Real-time notifications initialized for user: $_userId');
+      } catch (e) {
+        debugPrint('❌ Error initializing real-time notifications: $e');
+      }
+    }
+  }
+
   /// Load any previously saved token from local storage.
   Future<void> initialize() async {
     _accessToken = await TokenManager.getToken();
@@ -33,9 +57,7 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    final Uri url = Uri.parse(
-      'https://smart-water-distribution-system-q6x7.onrender.com/api/customer/login',
-    );
+    final Uri url = Uri.parse('${Constants.baseUrl}/customer/login');
 
     debugPrint('🌐 Using login URL: ${url.toString()}');
     final Map<String, String> body = {
@@ -135,10 +157,31 @@ class AuthProvider with ChangeNotifier {
 
   /// Clear the saved token and log out the user.
   Future<void> logout() async {
+    // Note: Real-time notifications disconnection should be handled
+    // in the UI layer using logoutWithContext() method
+
     _accessToken = null;
     _userName = null;
     _userId = null;
     await TokenManager.clearToken();
     notifyListeners();
+  }
+
+  /// Logout with context for proper cleanup
+  Future<void> logoutWithContext(BuildContext context) async {
+    try {
+      // Disconnect real-time notifications
+      final notificationProvider = Provider.of<NotificationProvider>(
+        context,
+        listen: false,
+      );
+      notificationProvider.disconnectRealTimeNotifications();
+      debugPrint('✅ Real-time notifications disconnected during logout');
+    } catch (e) {
+      debugPrint('❌ Error disconnecting real-time notifications: $e');
+    }
+
+    // Perform regular logout
+    await logout();
   }
 }

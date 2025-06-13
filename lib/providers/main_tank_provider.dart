@@ -29,7 +29,7 @@ class MainTankProvider with ChangeNotifier {
       debugPrint('🔍 Fetching main tank data...');
 
       final apiUrl =
-          'https://smart-water-distribution-system-q6x7.onrender.com/api/customer/current-user';
+          'https://smart-water-distribution-system-vll8.onrender.com/api/customer/current-user';
       debugPrint('🌐 API URL: $apiUrl');
 
       final headers = {
@@ -65,7 +65,8 @@ class MainTankProvider with ChangeNotifier {
       } else {
         debugPrint('❌ Failed to fetch main tank data: ${response.statusCode}');
         debugPrint('❌ Response body: ${response.body}');
-        _errorMessage = 'Failed to fetch main tank data: ${response.statusCode}';
+        _errorMessage =
+            'Failed to fetch main tank data: ${response.statusCode}';
       }
     } catch (e) {
       debugPrint('❌ Exception while fetching main tank data: $e');
@@ -223,9 +224,8 @@ class MainTankProvider with ChangeNotifier {
     if (_mainTank == null) return 0.0;
 
     // Volume = π * r² * h (in cubic meters, then convert to liters)
-    final volumeM3 = 3.14159 *
-        (_mainTank!.radius * _mainTank!.radius) *
-        _mainTank!.height;
+    final volumeM3 =
+        3.14159 * (_mainTank!.radius * _mainTank!.radius) * _mainTank!.height;
 
     return volumeM3 * 1000; // Convert to liters
   }

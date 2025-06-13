@@ -5,7 +5,8 @@ import 'package:mytank/models/user_model.dart';
 import 'package:mytank/utilities/token_manager.dart';
 
 class UserService {
-  static const String baseUrl = 'https://smart-water-distribution-system-q6x7.onrender.com/api';
+  static const String baseUrl =
+      'https://smart-water-distribution-system-vll8.onrender.com/api';
 
   // Get the current user data
   static Future<User> getCurrentUser() async {
@@ -22,7 +23,9 @@ class UserService {
 
       // Log token details for debugging
       final previewLength = token.length > 15 ? 15 : token.length;
-      debugPrint('🔑 Token found (preview): ${token.substring(0, previewLength)}...');
+      debugPrint(
+        '🔑 Token found (preview): ${token.substring(0, previewLength)}...',
+      );
       debugPrint('🔑 Token length: ${token.length} characters');
 
       // Prepare headers with token as cookie

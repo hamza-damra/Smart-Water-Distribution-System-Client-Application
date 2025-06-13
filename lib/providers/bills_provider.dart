@@ -59,7 +59,7 @@ class BillsProvider with ChangeNotifier {
       }
 
       final apiUrl =
-          'https://smart-water-distribution-system-q6x7.onrender.com/api/bill/my-bills';
+          'https://smart-water-distribution-system-vll8.onrender.com/api/bill/my-bills';
       debugPrint('🌐 Bills API URL: $apiUrl');
 
       // Prepare headers with token as cookie

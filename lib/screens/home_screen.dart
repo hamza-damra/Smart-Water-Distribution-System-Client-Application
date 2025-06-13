@@ -1,7 +1,9 @@
 // home_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mytank/providers/auth_provider.dart';
 import 'package:mytank/providers/main_tank_provider.dart';
+import 'package:mytank/providers/notification_provider.dart';
 import 'package:mytank/utilities/route_manager.dart';
 import 'package:mytank/utilities/constants.dart';
 import 'package:mytank/widgets/water_tank_3d.dart';
@@ -26,12 +28,15 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _waveController;
+  late AnimationController _notificationPulseController;
+  late AnimationController _notificationBounceController;
+  late Animation<double> _pulseAnimation;
+  late Animation<double> _bounceAnimation;
   User? _currentUser;
   bool _isLoadingUser = false;
-  String? _userError;
+  int _previousUnreadCount = 0;
 
   @override
   void initState() {
@@ -40,6 +45,35 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(); // Wave animation loops indefinitely.
+
+    // Initialize notification animation controllers
+    _notificationPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _notificationBounceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    // Create animations
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(
+        parent: _notificationPulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _bounceAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
+      CurvedAnimation(
+        parent: _notificationBounceController,
+        curve: Curves.elasticOut,
+      ),
+    );
+
+    // Start pulse animation for notifications
+    _notificationPulseController.repeat(reverse: true);
 
     // Fetch main tank data and user data when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -50,7 +84,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _fetchMainTankData() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final mainTankProvider = Provider.of<MainTankProvider>(context, listen: false);
+    final mainTankProvider = Provider.of<MainTankProvider>(
+      context,
+      listen: false,
+    );
 
     if (authProvider.accessToken != null) {
       mainTankProvider.fetchMainTankData(authProvider);
@@ -60,7 +97,6 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _fetchUserData() async {
     setState(() {
       _isLoadingUser = true;
-      _userError = null;
     });
 
     try {
@@ -74,11 +110,20 @@ class _HomeScreenState extends State<HomeScreen>
         // Update auth provider with real user name
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
         authProvider.updateUserInfo(user.name);
+
+        // Initialize notifications
+        final notificationProvider = Provider.of<NotificationProvider>(
+          context,
+          listen: false,
+        );
+        notificationProvider.initializeNotifications(user.notifications);
+
+        // Initialize real-time notifications
+        authProvider.initializeRealTimeNotifications(context);
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _userError = e.toString();
           _isLoadingUser = false;
         });
       }
@@ -86,21 +131,28 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  /// Trigger bounce animation when notification count increases
+  void _triggerNotificationBounce(int newCount) {
+    if (newCount > _previousUnreadCount && newCount > 0) {
+      _notificationBounceController.reset();
+      _notificationBounceController.forward();
+    }
+    _previousUnreadCount = newCount;
+  }
+
   @override
   void dispose() {
     _waveController.dispose();
+    _notificationPulseController.dispose();
+    _notificationBounceController.dispose();
     super.dispose();
   }
-
-
-
-
 
   /// Handle logout with proper async/await pattern
   Future<void> _handleLogout(BuildContext context) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final navigator = Navigator.of(context);
-    await authProvider.logout();
+    await authProvider.logoutWithContext(context);
     if (mounted) {
       navigator.pushReplacementNamed(RouteManager.loginRoute);
     }
@@ -124,6 +176,21 @@ class _HomeScreenState extends State<HomeScreen>
             fontSize: 20,
           ),
         ),
+        actions: [
+          Consumer<NotificationProvider>(
+            builder: (context, notificationProvider, child) {
+              final unreadCount = notificationProvider.unreadCount;
+
+              // Trigger bounce animation when count changes
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _triggerNotificationBounce(unreadCount);
+              });
+
+              return _buildEnhancedNotificationIcon(unreadCount);
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
         elevation: 0,
       ),
       // Modern Navigation Drawer
@@ -160,9 +227,8 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ],
               ),
-              child: _isLoadingUser
-                  ? _buildLoadingHeader()
-                  : _buildUserHeader(),
+              child:
+                  _isLoadingUser ? _buildLoadingHeader() : _buildUserHeader(),
             ),
 
             const SizedBox(height: 10),
@@ -199,6 +265,25 @@ class _HomeScreenState extends State<HomeScreen>
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushNamed(context, RouteManager.billsRoute);
+              },
+            ),
+            Consumer<NotificationProvider>(
+              builder: (context, notificationProvider, child) {
+                return _buildDrawerItem(
+                  icon: Icons.notifications_rounded,
+                  title: 'Notifications',
+                  badge:
+                      notificationProvider.unreadCount > 0
+                          ? notificationProvider.unreadCount
+                          : null,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(
+                      context,
+                      RouteManager.notificationsRoute,
+                    );
+                  },
+                );
               },
             ),
 
@@ -279,7 +364,10 @@ class _HomeScreenState extends State<HomeScreen>
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [Constants.primaryColor, Constants.secondaryColor],
+                              colors: [
+                                Constants.primaryColor,
+                                Constants.secondaryColor,
+                              ],
                             ),
                             borderRadius: BorderRadius.circular(15),
                             boxShadow: [
@@ -331,8 +419,11 @@ class _HomeScreenState extends State<HomeScreen>
                       builder: (context, mainTankProvider, child) {
                         final currentUsage = mainTankProvider.currentMonthUsage;
                         final usageStatus = mainTankProvider.usageStatus;
-                        final usageStatusColor = mainTankProvider.usageStatusColor;
-                        final formattedUsage = mainTankProvider.formatUsage(currentUsage);
+                        final usageStatusColor =
+                            mainTankProvider.usageStatusColor;
+                        final formattedUsage = mainTankProvider.formatUsage(
+                          currentUsage,
+                        );
 
                         return Container(
                           margin: const EdgeInsets.only(top: 20),
@@ -341,7 +432,10 @@ class _HomeScreenState extends State<HomeScreen>
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [Constants.primaryColor, Constants.secondaryColor],
+                              colors: [
+                                Constants.primaryColor,
+                                Constants.secondaryColor,
+                              ],
                             ),
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
@@ -455,7 +549,8 @@ class _HomeScreenState extends State<HomeScreen>
                         // Header with current level and status
                         Consumer<MainTankProvider>(
                           builder: (context, mainTankProvider, child) {
-                            final waterLevel = mainTankProvider.waterLevelPercentage;
+                            final waterLevel =
+                                mainTankProvider.waterLevelPercentage;
                             final statusText = mainTankProvider.statusText;
                             final statusColor = mainTankProvider.statusColor;
 
@@ -472,7 +567,8 @@ class _HomeScreenState extends State<HomeScreen>
                                 ),
                                 const SizedBox(height: 8),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       '${(waterLevel * 100).toInt()}%',
@@ -518,8 +614,12 @@ class _HomeScreenState extends State<HomeScreen>
                                 // Professional Cylindrical 3D Tank Widget
                                 WaterTank3D(
                                   waterLevel: waterLevel,
-                                  maxCapacity: mainTankProvider.mainTank?.maxCapacity ?? 1.0,
-                                  currentLevel: mainTankProvider.mainTank?.currentLevel ?? 0.0,
+                                  maxCapacity:
+                                      mainTankProvider.mainTank?.maxCapacity ??
+                                      1.0,
+                                  currentLevel:
+                                      mainTankProvider.mainTank?.currentLevel ??
+                                      0.0,
                                 ),
 
                                 const SizedBox(height: 30),
@@ -527,26 +627,32 @@ class _HomeScreenState extends State<HomeScreen>
                                 // Refresh button
                                 Center(
                                   child: ElevatedButton.icon(
-                                    onPressed: mainTankProvider.isLoading || _isLoadingUser
-                                        ? null
-                                        : () {
-                                            _fetchMainTankData();
-                                            _fetchUserData();
-                                          },
-                                    icon: (mainTankProvider.isLoading || _isLoadingUser)
-                                        ? const SizedBox(
-                                            width: 16,
-                                            height: 16,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor: AlwaysStoppedAnimation<Color>(
-                                                Colors.white,
+                                    onPressed:
+                                        mainTankProvider.isLoading ||
+                                                _isLoadingUser
+                                            ? null
+                                            : () {
+                                              _fetchMainTankData();
+                                              _fetchUserData();
+                                            },
+                                    icon:
+                                        (mainTankProvider.isLoading ||
+                                                _isLoadingUser)
+                                            ? const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                      Color
+                                                    >(Colors.white),
                                               ),
-                                            ),
-                                          )
-                                        : const Icon(Icons.refresh_rounded),
+                                            )
+                                            : const Icon(Icons.refresh_rounded),
                                     label: Text(
-                                      (mainTankProvider.isLoading || _isLoadingUser)
+                                      (mainTankProvider.isLoading ||
+                                              _isLoadingUser)
                                           ? 'Refreshing...'
                                           : 'Refresh Data',
                                     ),
@@ -696,6 +802,7 @@ class _HomeScreenState extends State<HomeScreen>
     required VoidCallback onTap,
     Color? iconColor,
     bool isActive = false,
+    int? badge,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
@@ -718,13 +825,35 @@ class _HomeScreenState extends State<HomeScreen>
             size: 24,
           ),
         ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-            color: isActive ? const Color(0xFF1976D2) : Colors.black87,
-            fontSize: 16,
-          ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  color: isActive ? const Color(0xFF1976D2) : Colors.black87,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            if (badge != null && badge > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Constants.errorColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  badge > 99 ? '99+' : badge.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         onTap: onTap,
@@ -814,29 +943,30 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ],
               ),
-              child: user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image.network(
-                        user.avatarUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return _buildDefaultAvatar();
-                        },
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Constants.primaryColor,
+              child:
+                  user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
+                      ? ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.network(
+                          user.avatarUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildDefaultAvatar();
+                          },
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Constants.primaryColor,
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-                    )
-                  : _buildDefaultAvatar(),
+                            );
+                          },
+                        ),
+                      )
+                      : _buildDefaultAvatar(),
             ),
             const SizedBox(width: 15),
             // App branding (smaller)
@@ -1041,11 +1171,116 @@ class _HomeScreenState extends State<HomeScreen>
     if (words.length == 1) {
       return words[0].substring(0, 1).toUpperCase();
     } else {
-      return '${words[0].substring(0, 1)}${words[1].substring(0, 1)}'.toUpperCase();
+      return '${words[0].substring(0, 1)}${words[1].substring(0, 1)}'
+          .toUpperCase();
     }
   }
 
-
+  // Enhanced notification icon with improved animations and design
+  Widget _buildEnhancedNotificationIcon(int unreadCount) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([_pulseAnimation, _bounceAnimation]),
+      builder: (context, child) {
+        return Transform.scale(
+          scale:
+              unreadCount > 0
+                  ? _pulseAnimation.value * _bounceAnimation.value
+                  : 1.0,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Main notification icon with enhanced styling
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow:
+                      unreadCount > 0
+                          ? [
+                            BoxShadow(
+                              color: withValues(Constants.primaryColor, 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                          : null,
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    unreadCount > 0
+                        ? Icons.notifications_active_rounded
+                        : Icons.notifications_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  tooltip:
+                      unreadCount > 0
+                          ? '$unreadCount unread notifications'
+                          : 'Notifications',
+                  onPressed: () {
+                    // Add haptic feedback for better user experience
+                    HapticFeedback.lightImpact();
+                    Navigator.pushNamed(
+                      context,
+                      RouteManager.notificationsRoute,
+                    );
+                  },
+                ),
+              ),
+              // Enhanced notification badge
+              if (unreadCount > 0)
+                Positioned(
+                  right: 10,
+                  top: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Constants.primaryColor,
+                          Constants.secondaryColor,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: withValues(Constants.primaryColor, 0.3),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                        BoxShadow(
+                          color: withValues(Colors.white, 0.8),
+                          blurRadius: 1,
+                          offset: const Offset(0, -1),
+                        ),
+                      ],
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      unreadCount > 99 ? '99+' : unreadCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        height: 1.0,
+                        letterSpacing: -0.3,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
-
-

@@ -29,27 +29,13 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
     final authProvider = Provider.of<AuthProvider>(context);
     final userName = authProvider.userName ?? "User";
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 360;
 
     // Format dates
     final DateFormat dateFormat = DateFormat('MMMM dd, yyyy');
     final String createdDate = dateFormat.format(widget.bill.createdAt);
     final String updatedDate = dateFormat.format(widget.bill.updatedAt);
-
-    // Status color
-    final statusColor =
-        widget.bill.status == 'Paid'
-            ? Constants.successColor
-            : Constants.errorColor;
-
-    final statusBgColor =
-        widget.bill.status == 'Paid'
-            ? withValues(Constants.successColor, 0.1)
-            : withValues(Constants.errorColor, 0.1);
 
     return Scaffold(
       backgroundColor: const Color(
