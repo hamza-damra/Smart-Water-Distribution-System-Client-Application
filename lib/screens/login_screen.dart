@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mytank/providers/auth_provider.dart';
 import 'package:mytank/utilities/route_manager.dart';
+import 'package:mytank/utilities/constants.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,6 +17,21 @@ class LoginScreenState extends State<LoginScreen> {
       TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkServerConfig();
+  }
+
+  Future<void> _checkServerConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasServerConfig = prefs.containsKey('server_url');
+
+    if (mounted && !hasServerConfig) {
+      Navigator.pushReplacementNamed(context, RouteManager.serverConfigRoute);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -234,6 +251,16 @@ class LoginScreenState extends State<LoginScreen> {
                                           ScaffoldMessenger.of(context);
                                       final navigator = Navigator.of(context);
 
+                                      if (identityNumber.isEmpty || password.isEmpty) {
+                                        scaffoldMessenger.showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Please fill in all fields'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                        return;
+                                      }
+
                                       try {
                                         await authProvider.login(
                                           identityNumber,
@@ -241,12 +268,9 @@ class LoginScreenState extends State<LoginScreen> {
                                         );
                                         if (mounted) {
                                           scaffoldMessenger.showSnackBar(
-                                            SnackBar(
-                                              content: const Text(
-                                                'Login Successful!',
-                                              ),
-                                              backgroundColor:
-                                                  Colors.green.shade600,
+                                            const SnackBar(
+                                              content: Text('Login Successful!'),
+                                              backgroundColor: Colors.green,
                                             ),
                                           );
                                           navigator.pushReplacementNamed(
@@ -257,11 +281,8 @@ class LoginScreenState extends State<LoginScreen> {
                                         if (mounted) {
                                           scaffoldMessenger.showSnackBar(
                                             SnackBar(
-                                              content: const Text(
-                                                'Login Failed: Invalid credentials',
-                                              ),
-                                              backgroundColor:
-                                                  Colors.red.shade600,
+                                              content: Text('Login Failed: ${e.toString()}'),
+                                              backgroundColor: Colors.red,
                                             ),
                                           );
                                         }

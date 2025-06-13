@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Constants {
   // App colors - Modern palette
@@ -50,13 +51,42 @@ class Constants {
   // Animation durations
   static const Duration defaultAnimationDuration = Duration(milliseconds: 300);
 
+  // Default server URL
+  static const String defaultBaseUrl = 'https://smart-water-distribution-system-vll8.onrender.com';
+  static const String defaultApiUrl = '$defaultBaseUrl/api';
+
+  // Dynamic server URL (initialized with default)
+  static String _baseUrl = defaultBaseUrl;
+  static String _apiUrl = defaultApiUrl;
+
+  // Getters for URLs
+  static String get baseUrl => _baseUrl;
+  static String get apiUrl => _apiUrl;
+
+  // Update base URL and API URL
+  static Future<void> updateBaseUrl(String newBaseUrl) async {
+    _baseUrl = newBaseUrl;
+    _apiUrl = '$newBaseUrl/api';
+    
+    // Save to SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('server_url', newBaseUrl);
+  }
+
+  // Initialize URLs from SharedPreferences
+  static Future<void> initializeUrls() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUrl = prefs.getString('server_url');
+    if (savedUrl != null) {
+      _baseUrl = savedUrl;
+      _apiUrl = '$savedUrl/api';
+    }
+  }
+
   // API endpoints
-  static const String baseUrl =
-      'https://smart-water-distribution-system-q6x7.onrender.com/api';
-  static const String loginEndpoint = '$baseUrl/user/login';
-  static const String userInfoEndpoint = '$baseUrl/user/get-user-info-by-id';
+  static String get loginEndpoint => '$apiUrl/customer/login';
+  static String get userInfoEndpoint => '$apiUrl/customer/current-user';
 
   // Socket.IO server URL for real-time notifications
-  static const String socketUrl =
-      'https://smart-water-distribution-system-vll8.onrender.com';
+  static String get socketUrl => baseUrl;
 }

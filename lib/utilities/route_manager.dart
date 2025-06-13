@@ -1,86 +1,126 @@
 import 'package:flutter/material.dart';
-import 'package:mytank/screens/login_screen.dart';
-import 'package:mytank/screens/forgot_password_screen.dart';
-import 'package:mytank/screens/update_password_screen.dart';
-import 'package:mytank/screens/update_data_screen.dart';
-import 'package:mytank/screens/home_screen.dart';
-import 'package:mytank/screens/profile_screen.dart';
-import 'package:mytank/screens/tanks_screen.dart';
-import 'package:mytank/screens/tank_details_screen.dart';
-import 'package:mytank/screens/tank_screen.dart';
-import 'package:mytank/screens/bills_screen.dart';
-import 'package:mytank/screens/payment_screen_custom.dart';
-import 'package:mytank/screens/splash_screen.dart';
-import 'package:mytank/screens/bill_details_screen.dart';
-<<<<<<< HEAD
-import 'package:mytank/screens/notifications_screen.dart';
-=======
-import 'package:mytank/screens/about_us_screen.dart';
->>>>>>> 99e9e6ccff93714b0cc156961ccbda337af575c6
-import 'package:mytank/models/bill_model.dart';
+import '../screens/home_screen.dart';
+import '../screens/login_screen.dart';
+import '../screens/register_screen.dart';
+import '../screens/forgot_password_screen.dart';
+import '../screens/tanks_screen.dart';
+import '../screens/tank_details_screen.dart';
+import '../screens/bills_screen.dart';
+import '../screens/bill_details_screen.dart';
+import '../screens/payment_screen.dart';
+import '../screens/profile_screen.dart';
+import '../screens/notifications_screen.dart';
+import '../screens/server_config_screen.dart';
+import '../screens/update_data_screen.dart';
+import '../screens/about_us_screen.dart';
+import '../models/bill_model.dart';
 
 class RouteManager {
-  static const String splashRoute = '/';
+  // Route names
+  static const String serverConfigRoute = '/';
   static const String loginRoute = '/login';
-  static const String forgotPasswordRoute = '/forgotPassword';
-  static const String updatePasswordRoute = '/updatePassword';
-  static const String updateDataRoute = '/updateData';
+  static const String registerRoute = '/register';
+  static const String forgotPasswordRoute = '/forgot-password';
   static const String homeRoute = '/home';
-  static const String profileRoute = '/profile';
   static const String tanksRoute = '/tanks';
-  static const String tankDetailsRoute = '/tankDetails';
-  static const String tankRoute = '/tank';
+  static const String tankDetailsRoute = '/tank-details';
   static const String billsRoute = '/bills';
+  static const String billDetailsRoute = '/bill-details';
   static const String paymentRoute = '/payment';
-  static const String billDetailsRoute = '/billDetails';
-<<<<<<< HEAD
+  static const String profileRoute = '/profile';
   static const String notificationsRoute = '/notifications';
-=======
-  static const String aboutUsRoute = '/aboutUs';
->>>>>>> 99e9e6ccff93714b0cc156961ccbda337af575c6
+  static const String updateDataRoute = '/update-data';
+  static const String aboutUsRoute = '/about-us';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
-      case splashRoute:
-        return MaterialPageRoute(builder: (_) => const SplashScreen());
-      case loginRoute:
-        return MaterialPageRoute(builder: (_) => const LoginScreen());
-      case forgotPasswordRoute:
-        return MaterialPageRoute(builder: (_) => const ForgotPasswordScreen());
-      case updatePasswordRoute:
-        return MaterialPageRoute(builder: (_) => const UpdatePasswordScreen());
-      case updateDataRoute:
-        return MaterialPageRoute(builder: (_) => const UpdateDataScreen());
-      case homeRoute:
-        return MaterialPageRoute(builder: (_) => const HomeScreen());
-      case tankDetailsRoute:
-        final tankId = settings.arguments as String;
+      case serverConfigRoute:
         return MaterialPageRoute(
-          builder: (_) => TankDetailsScreen(tankId: tankId),
+          builder: (_) => const ServerConfigScreen(),
         );
-      case profileRoute:
-        return MaterialPageRoute(builder: (_) => const ProfileScreen());
+
+      case loginRoute:
+        return MaterialPageRoute(
+          builder: (_) => const LoginScreen(),
+        );
+
+      case registerRoute:
+        return MaterialPageRoute(
+          builder: (_) => const RegisterScreen(),
+        );
+
+      case forgotPasswordRoute:
+        return MaterialPageRoute(
+          builder: (_) => const ForgotPasswordScreen(),
+        );
+
+      case homeRoute:
+        return MaterialPageRoute(
+          builder: (_) => const HomeScreen(),
+        );
+
       case tanksRoute:
-        return MaterialPageRoute(builder: (_) => const TanksScreen());
-      case tankRoute:
-        return MaterialPageRoute(builder: (_) => const TankScreen());
+        return MaterialPageRoute(
+          builder: (_) => const TanksScreen(),
+        );
+
+      case tankDetailsRoute:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => TankDetailsScreen(
+            tankId: args['tankId'] as String,
+          ),
+        );
+
       case billsRoute:
-        return MaterialPageRoute(builder: (_) => const BillsScreen());
-      case paymentRoute:
-        final bill = settings.arguments as Bill;
-        return MaterialPageRoute(builder: (_) => PaymentScreen(bill: bill));
+        return MaterialPageRoute(
+          builder: (_) => const BillsScreen(),
+        );
+
       case billDetailsRoute:
-        final bill = settings.arguments as Bill;
-        return MaterialPageRoute(builder: (_) => BillDetailsScreen(bill: bill));
-<<<<<<< HEAD
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => BillDetailsScreen(
+            bill: args['bill'] as Bill,
+          ),
+        );
+
+      case paymentRoute:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => PaymentScreen(
+            bill: args['bill'] as Bill,
+          ),
+        );
+
+      case profileRoute:
+        return MaterialPageRoute(
+          builder: (_) => const ProfileScreen(),
+        );
+
       case notificationsRoute:
-        return MaterialPageRoute(builder: (_) => const NotificationsScreen());
-=======
+        return MaterialPageRoute(
+          builder: (_) => const NotificationsScreen(),
+        );
+
+      case updateDataRoute:
+        return MaterialPageRoute(
+          builder: (_) => const UpdateDataScreen(),
+        );
+
       case aboutUsRoute:
-        return MaterialPageRoute(builder: (_) => const AboutUsScreen());
->>>>>>> 99e9e6ccff93714b0cc156961ccbda337af575c6
+        return MaterialPageRoute(
+          builder: (_) => const AboutUsScreen(),
+        );
+
       default:
-        throw const FormatException('Route not found! Check routes again.');
+        return MaterialPageRoute(
+          builder: (_) => Scaffold(
+            body: Center(
+              child: Text('No route defined for ${settings.name}'),
+            ),
+          ),
+        );
     }
   }
 }

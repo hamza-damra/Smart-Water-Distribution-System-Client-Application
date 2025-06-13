@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mytank/models/tank_model.dart';
 import 'package:mytank/providers/auth_provider.dart';
 import 'package:mytank/providers/tanks_provider.dart';
@@ -8,6 +9,8 @@ import 'package:mytank/widgets/tank_shimmer_loading.dart';
 import 'package:mytank/widgets/water_tank_3d.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:async';
+import 'package:mytank/utilities/route_manager.dart';
 
 // Helper method to replace deprecated withOpacity
 Color withValues(Color color, double opacity) =>
@@ -20,16 +23,46 @@ class TanksScreen extends StatefulWidget {
   State<TanksScreen> createState() => _TanksScreenState();
 }
 
-class _TanksScreenState extends State<TanksScreen> {
+class _TanksScreenState extends State<TanksScreen> 
+    with TickerProviderStateMixin {
   bool _isLoading = true;
   int _selectedTankIndex = 0;
   double _monthlyCapacity = 0;
   double _maxCapacity = 0;
 
+  // Animation controllers
+  late AnimationController _rotationController;
+  late Animation<double> _rotationAnimation;
+
   @override
   void initState() {
     super.initState();
+    _initializeAnimations();
     _fetchData();
+  }
+
+  void _initializeAnimations() {
+    _rotationController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    );
+
+    _rotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _rotationController,
+      curve: Curves.linear,
+    ));
+
+    // Start background rotation animation
+    _rotationController.repeat();
+  }
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchData() async {
@@ -53,6 +86,11 @@ class _TanksScreenState extends State<TanksScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _refreshData() async {
+    HapticFeedback.mediumImpact();
+    await _fetchData();
   }
 
   // Fetch detailed data for a specific tank
@@ -83,11 +121,7 @@ class _TanksScreenState extends State<TanksScreen> {
     return tank.getAllDailyUsageData();
   }
 
-
-
-
-
-  Widget _buildCapacityCard({
+  Widget _buildModernCapacityCard({
     required String title,
     required double value,
     required IconData icon,
@@ -95,62 +129,57 @@ class _TanksScreenState extends State<TanksScreen> {
     required String unit,
   }) {
     return Container(
-      padding: const EdgeInsets.all(15),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: withValues(Constants.primaryColor, 0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: Colors.black.withAlpha(5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
+        border: Border.all(
+          color: color.withAlpha(50),
+          width: 1,
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: withValues(color, 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withAlpha(20),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   title,
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Constants.blackColor,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade600,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '${value.toStringAsFixed(1)} $unit',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Constants.blackColor,
+                const SizedBox(height: 4),
+                Text(
+                  '${value.toStringAsFixed(1)} $unit',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
             ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-          const SizedBox(height: 5),
-          Text(
-            'Tank capacity',
-            style: TextStyle(fontSize: 12, color: Constants.greyColor),
           ),
         ],
       ),
@@ -169,19 +198,79 @@ class _TanksScreenState extends State<TanksScreen> {
     Tank? selectedTank = tanks.isNotEmpty ? tanks[_selectedTankIndex] : null;
 
     return Scaffold(
-      backgroundColor: Constants.backgroundColor,
-      body:
-          _isLoading
-              ? const TankShimmerLoadingEffect()
-              : tanks.isEmpty
-              ? const Center(
-                child: Text(
-                  'No tanks found. Please add a tank to get started.',
-                  style: TextStyle(fontSize: 16),
-                  textAlign: TextAlign.center,
+      backgroundColor: const Color(0xFFF8FAFC), // Modern background color
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        color: Constants.primaryColor,
+        backgroundColor: Colors.white,
+        child: _isLoading
+            ? const TankShimmerLoadingEffect()
+            : tanks.isEmpty
+            ? _buildEmptyState()
+            : _buildMainContent(screenSize, tanks, selectedTank, userName),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE3F2FD),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                Icons.water_drop_outlined,
+                size: 48,
+                color: Constants.primaryColor,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'No Tanks Found',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Add your first tank to start monitoring water usage and get insights.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _fetchData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Constants.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(25),
                 ),
-              )
-              : _buildMainContent(screenSize, tanks, selectedTank, userName),
+                elevation: 4,
+              ),
+              icon: const Icon(Icons.add_rounded, size: 20),
+              label: const Text(
+                'Add Tank',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -201,967 +290,181 @@ class _TanksScreenState extends State<TanksScreen> {
       _maxCapacity = selectedTank.maxCapacity;
     }
 
-    return NestedScrollView(
-                headerSliverBuilder: (context, innerBoxIsScrolled) {
-                  return [
-                    SliverAppBar(
-                      expandedHeight: screenSize.height * 0.16,
-                      pinned: true,
-                      backgroundColor: Constants.primaryColor,
-                      elevation: innerBoxIsScrolled ? 4 : 0,
-                      leading: Container(
-                        margin: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: withValues(Colors.white, 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.arrow_back_rounded,
-                            color: Colors.white,
-                          ),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ),
-                      actions: [
-                        Container(
-                          margin: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: withValues(Colors.white, 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.refresh_rounded,
-                              color: Colors.white,
-                            ),
-                            onPressed: _fetchData,
-                          ),
-                        ),
-                      ],
-                      flexibleSpace: FlexibleSpaceBar(
-                        title: null, // Remove default title
-                        centerTitle: true,
-                        background: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color(0xFF1E3A8A), // Deeper blue
-                                Constants.primaryColor,
-                                Constants.secondaryColor,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              stops: const [0.0, 0.5, 1.0],
-                            ),
-                          ),
-                          child: SafeArea(
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 20),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Custom positioned title
-                                  const Text(
-                                    'My Tanks',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: withValues(Colors.white, 0.2),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: const Text(
-                                      'Smart Water System',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        collapseMode: CollapseMode.parallax,
-                      ),
-                    ),
-                  ];
-                },
-                body: SafeArea(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                    children: [
-                      // Tank selector if there are multiple tanks
-                      if (tanks.length > 1)
-                        Container(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 15,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Label for tank selection
-                              Padding(
-                                padding: const EdgeInsets.only(left: 5, bottom: 10),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: withValues(Constants.primaryColor, 0.1),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Icon(
-                                        Icons.water_drop_outlined,
-                                        color: Constants.primaryColor,
-                                        size: 18,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      'Select Tank',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Constants.blackColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Dropdown container
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 15,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(15),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: withValues(Constants.primaryColor, 0.06),
-                                      blurRadius: 15,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Theme(
-                                  data: Theme.of(context).copyWith(
-                                    canvasColor: Colors.transparent,
-                                  ),
-                                  child: DropdownButtonHideUnderline(
-                                    child: DropdownButton<int>(
-                                      isExpanded: true,
-                                      value: _selectedTankIndex,
-                                      hint: const Text('Choose a tank'),
-                                      icon: Icon(
-                                        Icons.keyboard_arrow_down_rounded,
-                                        color: Constants.primaryColor,
-                                      ),
-                                      dropdownColor: Colors.white,
-                                      borderRadius: BorderRadius.circular(15),
-                                      elevation: 8,
-                                      items: List.generate(
-                                        tanks.length,
-                                        (index) => DropdownMenuItem<int>(
-                                          value: index,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 8,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: _selectedTankIndex == index
-                                                  ? withValues(Constants.primaryColor, 0.1)
-                                                  : Colors.transparent,
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Container(
-                                                  padding: const EdgeInsets.all(6),
-                                                  decoration: BoxDecoration(
-                                                    color: withValues(Constants.primaryColor, 0.15),
-                                                    borderRadius: BorderRadius.circular(8),
-                                                  ),
-                                                  child: Icon(
-                                                    Icons.water_drop_outlined,
-                                                    color: Constants.primaryColor,
-                                                    size: 16,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 10),
-                                                Expanded(
-                                                  child: Text(
-                                                    'Tank ${tanks[index].id.substring(tanks[index].id.length - 6)}',
-                                                    style: TextStyle(
-                                                      color: Constants.blackColor,
-                                                      fontWeight: FontWeight.w500,
-                                                      fontSize: 14,
-                                                    ),
-                                                    overflow: TextOverflow.ellipsis,
-                                                    maxLines: 1,
-                                                  ),
-                                                ),
-                                                if (_selectedTankIndex == index)
-                                                  Icon(
-                                                    Icons.check_circle,
-                                                    color: Constants.primaryColor,
-                                                    size: 18,
-                                                  ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      onChanged: (value) {
-                                        if (value != null) {
-                                          setState(() {
-                                            _selectedTankIndex = value;
-                                          });
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      slivers: [
+        _buildModernAppBar(screenSize),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // Tank selector if there are multiple tanks
+                if (tanks.length > 1) _buildTankSelector(tanks),
+                if (tanks.length > 1) const SizedBox(height: 20),
 
-                                          // Fetch detailed data for the newly selected tank
-                                          final tanksProvider = Provider.of<TanksProvider>(context, listen: false);
-                                          if (tanksProvider.tanks.isNotEmpty) {
-                                            final selectedTank = tanksProvider.tanks[value];
-                                            _fetchTankDetails(selectedTank.id);
-                                          }
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                // Tank status summary card
+                _buildTankStatusCard(waterLevel, currentLevelLiters, maxCapacityLiters),
+                
+                const SizedBox(height: 20),
 
-                      const SizedBox(height: 10),
+                // Modern water level indicator card
+                _buildWaterLevelCard(waterLevel, currentLevelLiters, maxCapacityLiters),
+                
+                const SizedBox(height: 20),
 
-                      // Tank status summary card
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Constants.primaryColor,
-                              Constants.secondaryColor,
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: withValues(Constants.primaryColor, 0.2),
-                              blurRadius: 15,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Tank Status',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: withValues(Colors.white, 0.2),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    waterLevel < 0.3
-                                        ? 'Low'
-                                        : waterLevel < 0.7
-                                        ? 'Normal'
-                                        : 'Full',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 15),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.water_drop_outlined,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Current Level: ${currentLevelLiters.toStringAsFixed(1)} L',
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.white,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.water,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Capacity: ${maxCapacityLiters.toStringAsFixed(1)} L',
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.white,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
+                // Capacity Information Cards
+                _buildCapacitySection(),
+                
+                const SizedBox(height: 20),
 
-                      // Modern water level indicator card
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 15,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: withValues(Constants.primaryColor, 0.08),
-                              blurRadius: 15,
-                              offset: const Offset(0, 5),
-                              spreadRadius: 0,
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          waterLevel < 0.3
-                                              ? withValues(
-                                                Constants.errorColor,
-                                                0.15,
-                                              )
-                                              : waterLevel < 0.6
-                                              ? withValues(
-                                                Constants.warningColor,
-                                                0.15,
-                                              )
-                                              : withValues(
-                                                Constants.primaryColor,
-                                                0.15,
-                                              ),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Icon(
-                                      Icons.water_drop,
-                                      color:
-                                          waterLevel < 0.3
-                                              ? Constants.errorColor
-                                              : waterLevel < 0.6
-                                              ? Constants.warningColor
-                                              : Constants.primaryColor,
-                                      size: 24,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 15),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Water Level',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Constants.blackColor,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${currentLevelLiters.toStringAsFixed(1)} L / ${maxCapacityLiters.toStringAsFixed(1)} L',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Constants.greyColor,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
-                                    ],
-                                  ),
-                                  const Spacer(),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          waterLevel < 0.3
-                                              ? withValues(
-                                                Constants.errorColor,
-                                                0.15,
-                                              )
-                                              : waterLevel < 0.6
-                                              ? withValues(
-                                                Constants.warningColor,
-                                                0.15,
-                                              )
-                                              : withValues(
-                                                Constants.primaryColor,
-                                                0.15,
-                                              ),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      "${(waterLevel * 100).toStringAsFixed(1)}%",
-                                      style: TextStyle(
-                                        color:
-                                            waterLevel < 0.3
-                                                ? Constants.errorColor
-                                                : waterLevel < 0.6
-                                                ? Constants.warningColor
-                                                : Constants.primaryColor,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                // Usage Statistics Cards
+                _buildUsageStatisticsSection(),
+                
+                const SizedBox(height: 20),
 
-                            // Professional Cylindrical 3D Tank Widget
-                            WaterTank3D(
-                              waterLevel: waterLevel,
-                              maxCapacity: maxCapacityLiters,
-                              currentLevel: currentLevelLiters,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Capacity Information Cards
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Header
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: withValues(
-                                      Constants.primaryColor,
-                                      0.1,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    Icons.water_drop_outlined,
-                                    color: Constants.primaryColor,
-                                    size: 24,
-                                  ),
-                                ),
-                                const SizedBox(width: 15),
-                                Text(
-                                  'Tank Capacity',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Constants.blackColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 15),
-
-                            // Capacity cards
-                            LayoutBuilder(
-                              builder: (context, constraints) {
-                                // Use column layout on very small screens
-                                if (constraints.maxWidth < 300) {
-                                  return Column(
-                                    children: [
-                                      _buildCapacityCard(
-                                        title: 'Monthly Capacity',
-                                        value: _monthlyCapacity,
-                                        icon: Icons.calendar_month_rounded,
-                                        color: Constants.primaryColor,
-                                        unit: 'L',
-                                      ),
-                                      const SizedBox(height: 15),
-                                      _buildCapacityCard(
-                                        title: 'Max Capacity',
-                                        value: _maxCapacity,
-                                        icon: Icons.water_drop_rounded,
-                                        color: Constants.warningColor,
-                                        unit: 'L',
-                                      ),
-                                    ],
-                                  );
-                                }
-                                // Use row layout for normal screens
-                                return Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildCapacityCard(
-                                        title: 'Monthly Capacity',
-                                        value: _monthlyCapacity,
-                                        icon: Icons.calendar_month_rounded,
-                                        color: Constants.primaryColor,
-                                        unit: 'L',
-                                      ),
-                                    ),
-                                    const SizedBox(width: 15),
-                                    Expanded(
-                                      child: _buildCapacityCard(
-                                        title: 'Max Capacity',
-                                        value: _maxCapacity,
-                                        icon: Icons.water_drop_rounded,
-                                        color: Constants.warningColor,
-                                        unit: 'L',
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Usage Statistics Cards
-                      Consumer<MainTankProvider>(
-                        builder: (context, mainTankProvider, child) {
-                          return Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 10,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Header
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: withValues(
-                                          Constants.primaryColor,
-                                          0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Icon(
-                                        Icons.analytics_rounded,
-                                        color: Constants.primaryColor,
-                                        size: 24,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 15),
-                                    Text(
-                                      'Usage Statistics',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Constants.blackColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 15),
-
-                                // First row of cards
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildUsageStatCard(
-                                        'Today',
-                                        mainTankProvider.formatUsage(mainTankProvider.currentDayUsage),
-                                        Icons.today_rounded,
-                                        Constants.primaryColor,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: _buildUsageStatCard(
-                                        'This Week',
-                                        mainTankProvider.formatUsage(mainTankProvider.currentWeekUsage),
-                                        Icons.calendar_view_week_rounded,
-                                        Constants.successColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-
-                                // Second row of cards
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildUsageStatCard(
-                                        'Daily Avg',
-                                        mainTankProvider.formatUsage(mainTankProvider.dailyAverageUsage),
-                                        Icons.trending_up_rounded,
-                                        Constants.warningColor,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: _buildUsageStatCard(
-                                        'This Month',
-                                        mainTankProvider.formatUsage(mainTankProvider.currentMonthUsage),
-                                        Icons.calendar_month_rounded,
-                                        Constants.accentColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-
-                      // Usage history card
-                      Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: withValues(Constants.primaryColor, 0.08),
-                              blurRadius: 15,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: withValues(
-                                      Constants.primaryColor,
-                                      0.1,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    Icons.show_chart_rounded,
-                                    color: Constants.primaryColor,
-                                    size: 24,
-                                  ),
-                                ),
-                                const SizedBox(width: 15),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        selectedTank != null
-                                            ? 'Monthly Water Usage - ${selectedTank.getCurrentMonthName()}'
-                                            : 'Monthly Water Usage',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Constants.blackColor,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'All days of the month • Wave chart',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Constants.greyColor,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            // Wave chart for all days of the month
-                            Container(
-                              height: screenSize.height * 0.35,
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: withValues(Colors.grey, 0.1),
-                                    spreadRadius: 2,
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: selectedTank != null
-                                  ? LineChart(
-                                      LineChartData(
-                                        gridData: FlGridData(
-                                          show: true,
-                                          drawVerticalLine: false,
-                                          horizontalInterval: _getMaxChartValue(selectedTank) / 4,
-                                          getDrawingHorizontalLine: (value) {
-                                            return FlLine(
-                                              color: withValues(Constants.greyColor, 0.1),
-                                              strokeWidth: 1,
-                                            );
-                                          },
-                                        ),
-                                        titlesData: FlTitlesData(
-                                          show: true,
-                                          rightTitles: const AxisTitles(
-                                            sideTitles: SideTitles(showTitles: false),
-                                          ),
-                                          topTitles: const AxisTitles(
-                                            sideTitles: SideTitles(showTitles: false),
-                                          ),
-                                          bottomTitles: AxisTitles(
-                                            sideTitles: SideTitles(
-                                              showTitles: true,
-                                              getTitlesWidget: (value, meta) {
-                                                final day = value.toInt();
-                                                if (day % 5 == 0 || day == 1) {
-                                                  return Padding(
-                                                    padding: const EdgeInsets.only(top: 8.0),
-                                                    child: Text(
-                                                      day.toString(),
-                                                      style: TextStyle(
-                                                        color: Constants.greyColor,
-                                                        fontSize: 12,
-                                                        fontWeight: FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                  );
-                                                }
-                                                return const Text('');
-                                              },
-                                              reservedSize: 30,
-                                            ),
-                                          ),
-                                          leftTitles: AxisTitles(
-                                            sideTitles: SideTitles(
-                                              showTitles: true,
-                                              getTitlesWidget: (value, meta) {
-                                                if (value == 0) return const Text('0L');
-                                                return Text(
-                                                  '${(value).toStringAsFixed(0)}L',
-                                                  style: TextStyle(
-                                                    color: Constants.greyColor,
-                                                    fontSize: 10,
-                                                  ),
-                                                );
-                                              },
-                                              reservedSize: 40,
-                                              interval: _getMaxChartValue(selectedTank) / 4,
-                                            ),
-                                          ),
-                                        ),
-                                        borderData: FlBorderData(show: false),
-                                        minX: 1,
-                                        maxX: _getAllDaysUsage(selectedTank).length.toDouble(),
-                                        minY: 0,
-                                        maxY: _getMaxChartValue(selectedTank) * 1.1,
-                                        lineBarsData: [
-                                          LineChartBarData(
-                                            spots: _getAllDaysUsage(selectedTank)
-                                                .asMap()
-                                                .entries
-                                                .map((entry) {
-                                              final day = entry.key + 1;
-                                              final usage = entry.value;
-                                              return FlSpot(day.toDouble(), usage);
-                                            }).toList(),
-                                            isCurved: true,
-                                            curveSmoothness: 0.35,
-                                            color: const Color(0xFF2196F3),
-                                            barWidth: 3,
-                                            isStrokeCapRound: true,
-                                            dotData: FlDotData(
-                                              show: true,
-                                              getDotPainter: (spot, percent, barData, index) {
-                                                return FlDotCirclePainter(
-                                                  radius: 4,
-                                                  color: const Color(0xFF2196F3),
-                                                  strokeWidth: 2,
-                                                  strokeColor: Colors.white,
-                                                );
-                                              },
-                                            ),
-                                            belowBarData: BarAreaData(
-                                              show: true,
-                                              gradient: LinearGradient(
-                                                begin: Alignment.topCenter,
-                                                end: Alignment.bottomCenter,
-                                                colors: [
-                                                  withValues(const Color(0xFF2196F3), 0.3),
-                                                  withValues(const Color(0xFF2196F3), 0.1),
-                                                  withValues(const Color(0xFF2196F3), 0.05),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                        lineTouchData: LineTouchData(
-                                          enabled: true,
-                                          touchTooltipData: LineTouchTooltipData(
-                                            getTooltipColor: (touchedSpot) =>
-                                                withValues(const Color(0xFF2196F3), 0.8),
-                                            getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
-                                              return touchedBarSpots.map((barSpot) {
-                                                return LineTooltipItem(
-                                                  'Day ${barSpot.x.toInt()}\n${barSpot.y.toStringAsFixed(1)}L',
-                                                  const TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 12,
-                                                  ),
-                                                );
-                                              }).toList();
-                                            },
-                                          ),
-                                          handleBuiltInTouches: true,
-                                        ),
-                                      ),
-                                    )
-                                  : Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.show_chart_rounded,
-                                            size: 48,
-                                            color: withValues(Constants.greyColor, 0.5),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          Text(
-                                            'Select a tank to view usage data',
-                                            style: TextStyle(
-                                              color: Constants.greyColor,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Add some bottom padding
-                      const SizedBox(height: 30),
-                    ],
-                  ),
-                ),
-              ),
-            );
+                // Usage history card
+                _buildUsageHistoryCard(screenSize, selectedTank),
+                
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
-  // Helper method to build usage statistics cards with improved styling
-  Widget _buildUsageStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildModernAppBar(Size screenSize) {
+    return SliverAppBar(
+      expandedHeight: 120,
+      pinned: true,
+      backgroundColor: Constants.primaryColor,
+      elevation: 0,
+      stretch: true,
+      leading: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(200),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(10),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: Colors.black87,
+          ),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      actions: [
+        Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(200),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(10),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: Colors.black87,
+            ),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              _fetchData();
+            },
+          ),
+        ),
+      ],
+      title: const Text(
+        'My Tanks',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+        ),
+      ),
+      centerTitle: true,
+      flexibleSpace: FlexibleSpaceBar(
+        titlePadding: EdgeInsets.zero,
+        centerTitle: true,
+        background: Stack(
+          children: [
+            // Animated background
+            AnimatedBuilder(
+              animation: _rotationAnimation,
+              builder: (context, child) {
+                return Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFF667EEA),
+                        Constants.primaryColor,
+                        Constants.secondaryColor,
+                        const Color(0xFF764BA2),
+                      ],
+                      stops: const [0.0, 0.3, 0.7, 1.0],
+                      transform: GradientRotation(_rotationAnimation.value * 0.5),
+                    ),
+                  ),
+                );
+              },
+            ),
+            // Overlay pattern
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withAlpha(20),
+                  ],
+                ),
+              ),
+            ),
+            // Empty content area
+            const SizedBox.shrink(),
+          ],
+        ),
+        collapseMode: CollapseMode.parallax,
+      ),
+    );
+  }
+
+  Widget _buildTankSelector(List<Tank> tanks) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: withValues(Constants.primaryColor, 0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: Colors.black.withAlpha(5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
-        border: Border.all(
-          color: withValues(color, 0.1),
-          width: 1,
-        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1171,29 +474,804 @@ class _TanksScreenState extends State<TanksScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: withValues(color, 0.1),
+                  color: Constants.primaryColor.withAlpha(20),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  icon,
-                  color: color,
+                  Icons.water_drop_outlined,
+                  color: Constants.primaryColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Select Tank',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.grey.shade200,
+                width: 1,
+              ),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                isExpanded: true,
+                value: _selectedTankIndex,
+                hint: const Text('Choose a tank'),
+                icon: Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: Constants.primaryColor,
+                ),
+                dropdownColor: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                elevation: 8,
+                items: List.generate(
+                  tanks.length,
+                  (index) => DropdownMenuItem<int>(
+                    value: index,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _selectedTankIndex == index
+                            ? Constants.primaryColor.withAlpha(20)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Constants.primaryColor.withAlpha(30),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.water_drop_outlined,
+                              color: Constants.primaryColor,
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Tank ${tanks[index].id.substring(tanks[index].id.length - 6)}',
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          if (_selectedTankIndex == index)
+                            Icon(
+                              Icons.check_circle,
+                              color: Constants.primaryColor,
+                              size: 18,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                onChanged: (value) {
+                  if (value != null) {
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      _selectedTankIndex = value;
+                    });
+
+                    // Navigate to tank details screen
+                    Navigator.pushNamed(
+                      context,
+                      RouteManager.tankDetailsRoute,
+                      arguments: {
+                        'tankId': tanks[value].id,
+                      },
+                    );
+
+                    // Fetch detailed data for the newly selected tank
+                    final tanksProvider = Provider.of<TanksProvider>(context, listen: false);
+                    if (tanksProvider.tanks.isNotEmpty) {
+                      final selectedTank = tanksProvider.tanks[value];
+                      _fetchTankDetails(selectedTank.id);
+                    }
+                  }
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTankStatusCard(double waterLevel, double currentLevelLiters, double maxCapacityLiters) {
+    Color statusColor = waterLevel < 0.3 
+        ? const Color(0xFFEF4444)
+        : waterLevel < 0.7 
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFF10B981);
+    
+    String statusText = waterLevel < 0.3 
+        ? 'Low Level'
+        : waterLevel < 0.7 
+            ? 'Normal'
+            : 'Optimal';
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Constants.primaryColor,
+            Constants.secondaryColor,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Constants.primaryColor.withAlpha(50),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Tank Status',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(20),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  statusText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(50),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.water_drop_outlined,
+                  color: Colors.white,
                   size: 20,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Constants.blackColor,
-                    fontWeight: FontWeight.w600,
+                  'Current Level: ${currentLevelLiters.toStringAsFixed(1)} L',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(50),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.water,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Capacity: ${maxCapacityLiters.toStringAsFixed(1)} L',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWaterLevelCard(double waterLevel, double currentLevelLiters, double maxCapacityLiters) {
+    Color levelColor = waterLevel < 0.3 
+        ? const Color(0xFFEF4444)
+        : waterLevel < 0.6 
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFF10B981);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: levelColor.withAlpha(20),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    Icons.water_drop,
+                    color: levelColor,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Water Level',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${currentLevelLiters.toStringAsFixed(1)} L / ${maxCapacityLiters.toStringAsFixed(1)} L',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: levelColor.withAlpha(20),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: levelColor.withAlpha(100),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    "${(waterLevel * 100).toStringAsFixed(1)}%",
+                    style: TextStyle(
+                      color: levelColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Professional Cylindrical 3D Tank Widget
+          WaterTank3D(
+            waterLevel: waterLevel,
+            maxCapacity: maxCapacityLiters,
+            currentLevel: currentLevelLiters,
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCapacitySection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6F7FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.water_drop_outlined,
+                  color: Color(0xFF1890FF),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Tank Capacity',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Column(
+            children: [
+              _buildModernCapacityCard(
+                title: 'Monthly Capacity',
+                value: _monthlyCapacity,
+                icon: Icons.calendar_month_rounded,
+                color: const Color(0xFF8B5CF6),
+                unit: 'L',
+              ),
+              const SizedBox(height: 16),
+              _buildModernCapacityCard(
+                title: 'Max Capacity',
+                value: _maxCapacity,
+                icon: Icons.water_drop_rounded,
+                color: const Color(0xFF06B6D4),
+                unit: 'L',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUsageStatisticsSection() {
+    return Consumer<MainTankProvider>(
+      builder: (context, mainTankProvider, child) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(5),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F9FF),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.analytics_rounded,
+                      color: Color(0xFF0EA5E9),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Usage Statistics',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildModernUsageStatCard(
+                      'Today',
+                      mainTankProvider.formatUsage(mainTankProvider.currentDayUsage),
+                      Icons.today_rounded,
+                      const Color(0xFF10B981),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildModernUsageStatCard(
+                      'This Week',
+                      mainTankProvider.formatUsage(mainTankProvider.currentWeekUsage),
+                      Icons.calendar_view_week_rounded,
+                      const Color(0xFF3B82F6),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildModernUsageStatCard(
+                      'Daily Avg',
+                      mainTankProvider.formatUsage(mainTankProvider.dailyAverageUsage),
+                      Icons.trending_up_rounded,
+                      const Color(0xFFF59E0B),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildModernUsageStatCard(
+                      'This Month',
+                      mainTankProvider.formatUsage(mainTankProvider.currentMonthUsage),
+                      Icons.calendar_month_rounded,
+                      const Color(0xFF8B5CF6),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUsageHistoryCard(Size screenSize, Tank? selectedTank) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.show_chart_rounded,
+                  color: Color(0xFFF59E0B),
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      selectedTank != null
+                          ? 'Monthly Usage - ${selectedTank.getCurrentMonthName()}'
+                          : 'Monthly Water Usage',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Daily consumption tracking',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Wave chart for all days of the month
+          Container(
+            height: screenSize.height * 0.35,
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.grey.shade200,
+                width: 1,
+              ),
+            ),
+            child: selectedTank != null
+                ? LineChart(
+                    LineChartData(
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: _getMaxChartValue(selectedTank) / 4,
+                        getDrawingHorizontalLine: (value) {
+                          return FlLine(
+                            color: Colors.grey.shade300,
+                            strokeWidth: 1,
+                          );
+                        },
+                      ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              final day = value.toInt();
+                              if (day % 5 == 0 || day == 1) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    day.toString(),
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return const Text('');
+                            },
+                            reservedSize: 30,
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              if (value == 0) return const Text('0L');
+                              return Text(
+                                '${(value).toStringAsFixed(0)}L',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 10,
+                                ),
+                              );
+                            },
+                            reservedSize: 40,
+                            interval: _getMaxChartValue(selectedTank) / 4,
+                          ),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      minX: 1,
+                      maxX: _getAllDaysUsage(selectedTank).length.toDouble(),
+                      minY: 0,
+                      maxY: _getMaxChartValue(selectedTank) * 1.1,
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: _getAllDaysUsage(selectedTank)
+                              .asMap()
+                              .entries
+                              .map((entry) {
+                            final day = entry.key + 1;
+                            final usage = entry.value;
+                            return FlSpot(day.toDouble(), usage);
+                          }).toList(),
+                          isCurved: true,
+                          curveSmoothness: 0.35,
+                          color: const Color(0xFF3B82F6),
+                          barWidth: 3,
+                          isStrokeCapRound: true,
+                          dotData: FlDotData(
+                            show: true,
+                            getDotPainter: (spot, percent, barData, index) {
+                              return FlDotCirclePainter(
+                                radius: 4,
+                                color: const Color(0xFF3B82F6),
+                                strokeWidth: 2,
+                                strokeColor: Colors.white,
+                              );
+                            },
+                          ),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                const Color(0xFF3B82F6).withAlpha(60),
+                                const Color(0xFF3B82F6).withAlpha(20),
+                                const Color(0xFF3B82F6).withAlpha(5),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                      lineTouchData: LineTouchData(
+                        enabled: true,
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipColor: (touchedSpot) =>
+                              const Color(0xFF3B82F6).withAlpha(200),
+                          getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                            return touchedBarSpots.map((barSpot) {
+                              return LineTooltipItem(
+                                'Day ${barSpot.x.toInt()}\n${barSpot.y.toStringAsFixed(1)}L',
+                                const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              );
+                            }).toList();
+                          },
+                        ),
+                        handleBuiltInTouches: true,
+                      ),
+                    ),
+                  )
+                : Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.show_chart_rounded,
+                          size: 48,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Select a tank to view usage data',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to build usage statistics cards with improved styling
+  Widget _buildModernUsageStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color.withAlpha(10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: color.withAlpha(50),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withAlpha(10),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withAlpha(20),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 24,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 4),
           Text(
             value,
             style: TextStyle(
@@ -1202,18 +1280,8 @@ class _TanksScreenState extends State<TanksScreen> {
               color: color,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Water usage',
-            style: TextStyle(
-              fontSize: 12,
-              color: Constants.greyColor,
-            ),
-          ),
         ],
       ),
     );
   }
-
-
 }

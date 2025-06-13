@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mytank/models/user_model.dart';
 import 'package:mytank/services/user_service.dart';
@@ -10,6 +11,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:provider/provider.dart';
 import 'package:mytank/providers/auth_provider.dart';
 import 'package:mytank/providers/update_data_provider.dart';
+import 'dart:async';
 
 // Helper method to replace deprecated withOpacity
 Color withValues(Color color, double opacity) =>
@@ -22,22 +24,117 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen> 
+    with TickerProviderStateMixin {
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
 
   User? _user;
   bool _isLoading = true;
   String _errorMessage = '';
+  
+  // Animation controllers
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late AnimationController _scaleController;
+  late AnimationController _rotationController;
+  
+  // Animations
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _rotationAnimation;
 
   final String _bio =
       'Passionate about water conservation and efficient water management. '
       'Committed to sustainable water usage practices and monitoring water consumption patterns.';
 
+  final List<Map<String, dynamic>> _achievements = [
+    {
+      'title': 'Water Saver',
+      'description': 'Reduced consumption by 15%',
+      'icon': Icons.water_drop,
+      'color': const Color(0xFF4CAF50),
+      'progress': 0.85,
+    },
+    {
+      'title': 'Eco Warrior',
+      'description': '30 days of efficient usage',
+      'icon': Icons.eco,
+      'color': const Color(0xFF8BC34A),
+      'progress': 1.0,
+    },
+    {
+      'title': 'Smart Monitor',
+      'description': 'Regular usage tracking',
+      'icon': Icons.analytics_rounded,
+      'color': const Color(0xFF2196F3),
+      'progress': 0.7,
+    },
+  ];
+
   @override
   void initState() {
     super.initState();
+    _initializeAnimations();
     _fetchUserData();
+  }
+
+  void _initializeAnimations() {
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    
+    _rotationController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _scaleController,
+      curve: Curves.elasticOut,
+    ));
+
+    _rotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _rotationController,
+      curve: Curves.linear,
+    ));
+
+    // Start background rotation animation
+    _rotationController.repeat();
   }
 
   Future<void> _fetchUserData() async {
@@ -47,21 +144,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _errorMessage = '';
       });
 
-      // Add a small delay to show the shimmer effect (for demonstration purposes)
-      // In production, you might want to remove this delay
-      await Future.delayed(const Duration(seconds: 2));
+      // Add a small delay for smooth animation
+      await Future.delayed(const Duration(milliseconds: 500));
 
       final user = await UserService.getCurrentUser();
       setState(() {
         _user = user;
         _isLoading = false;
       });
+
+      // Start animations when data is loaded
+      _fadeController.forward();
+      _slideController.forward();
+      _scaleController.forward();
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Failed to load user data: \$e';
+        _errorMessage = 'Failed to load user data: $e';
       });
     }
+  }
+
+  Future<void> _refreshProfile() async {
+    HapticFeedback.mediumImpact();
+    await _fetchUserData();
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -73,21 +179,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final status = await Permission.photos.request();
         if (!status.isGranted) return;
       }
-      final pickedFile = await _picker.pickImage(source: source);
+      
+      final pickedFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      
       if (pickedFile != null) {
         setState(() => _selectedImage = File(pickedFile.path));
-
-        // Upload the image to Cloudinary
+        HapticFeedback.selectionClick();
         _uploadImageToCloudinary();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error picking image: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showSnackBar('Error picking image: $e', isError: true);
       }
     }
   }
@@ -106,48 +213,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      // Log image details
-      debugPrint('📸 Selected image path: ${_selectedImage!.path}');
-      debugPrint('📸 Selected image exists: ${await _selectedImage!.exists()}');
-      debugPrint(
-        '📸 Selected image size: ${await _selectedImage!.length()} bytes',
-      );
-
       final success = await updateDataProvider.uploadAvatar(
         _selectedImage!,
         authProvider,
       );
 
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile picture updated successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        // Refresh user data to show the updated avatar
+        _showSnackBar('Profile picture updated successfully!');
         _fetchUserData();
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              updateDataProvider.errorMessage ??
-                  'Failed to update profile picture',
-            ),
-            backgroundColor: Colors.red,
-          ),
+        _showSnackBar(
+          updateDataProvider.errorMessage ?? 'Failed to update profile picture',
+          isError: true,
         );
       }
     } catch (e) {
-      debugPrint('❌ Error in profile screen while uploading image: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error uploading image: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showSnackBar('Error uploading image: $e', isError: true);
       }
     } finally {
       if (mounted) {
@@ -158,276 +240,456 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle_outline,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isError ? const Color(0xFFE53E3E) : const Color(0xFF38A169),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        margin: const EdgeInsets.all(16),
+        duration: Duration(seconds: isError ? 4 : 2),
+      ),
+    );
+  }
+
   void _showImageSourceDialog() {
+    HapticFeedback.mediumImpact();
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
-      builder:
-          (_) => SafeArea(
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Handle bar
                 Container(
-                  margin: const EdgeInsets.only(top: 8, bottom: 8),
                   width: 40,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: withValues(Constants.greyColor, 0.3),
+                    color: Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  child: Text(
-                    'Change Profile Picture',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Constants.blackColor,
-                    ),
+                const SizedBox(height: 20),
+                
+                Text(
+                  'Update Profile Picture',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Constants.blackColor,
                   ),
                 ),
-                Divider(color: withValues(Constants.greyColor, 0.2)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
+                const SizedBox(height: 8),
+                Text(
+                  'Choose how you want to update your profile photo',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Constants.greyColor,
                   ),
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.pop(context);
-                      _pickImage(ImageSource.camera);
-                    },
-                    borderRadius: BorderRadius.circular(15),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 15,
-                        horizontal: 20,
-                      ),
-                      decoration: BoxDecoration(
-                        color: withValues(Constants.accentColor, 0.15),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.camera_alt_rounded,
-                              color: Constants.primaryColor,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-                          Text(
-                            'Take Photo',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Constants.primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  textAlign: TextAlign.center,
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
-                  ),
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.pop(context);
-                      _pickImage(ImageSource.gallery);
-                    },
-                    borderRadius: BorderRadius.circular(15),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 15,
-                        horizontal: 20,
-                      ),
-                      decoration: BoxDecoration(
-                        color: withValues(Constants.accentColor, 0.15),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.photo_library_rounded,
-                              color: Constants.primaryColor,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-                          Text(
-                            'Choose from Gallery',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Constants.primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                const SizedBox(height: 25),
+                
+                // Action buttons
+                _buildImageSourceOption(
+                  icon: Icons.camera_alt_rounded,
+                  title: 'Take Photo',
+                  subtitle: 'Use camera to take a new photo',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(ImageSource.camera);
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildImageSourceOption(
+                  icon: Icons.photo_library_rounded,
+                  title: 'Choose from Gallery',
+                  subtitle: 'Select from your photo library',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(ImageSource.gallery);
+                  },
                 ),
                 const SizedBox(height: 20),
               ],
             ),
           ),
+        ),
+      ),
     );
+  }
+
+  Widget _buildImageSourceOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Constants.primaryColor.withAlpha(20),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: Constants.primaryColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Constants.blackColor,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Constants.greyColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Constants.greyColor,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _slideController.dispose();
+    _scaleController.dispose();
+    _rotationController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Constants.backgroundColor,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed:
-            () => Navigator.pushNamed(context, RouteManager.updateDataRoute),
-        backgroundColor: Constants.primaryColor,
-        elevation: 4,
-        icon: const Icon(Icons.edit_rounded, color: Colors.white),
-        label: const Text(
-          'Edit Profile',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: RefreshIndicator(
+        onRefresh: _refreshProfile,
+        color: Constants.primaryColor,
+        backgroundColor: Colors.white,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          slivers: [
+            _buildModernAppBar(),
+            if (_isLoading)
+              SliverToBoxAdapter(child: _buildLoadingContent())
+            else if (_errorMessage.isNotEmpty)
+              SliverToBoxAdapter(child: _buildErrorContent())
+            else
+              SliverToBoxAdapter(child: _buildMainContent()),
+          ],
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            SliverAppBar(
-              expandedHeight: 180,
-              pinned: true,
-              backgroundColor: Constants.primaryColor,
-              elevation: innerBoxIsScrolled ? 4 : 0,
-              leading: Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: withValues(Colors.white, 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back_rounded,
-                    color: Colors.white,
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                ),
+      floatingActionButton: _isLoading ? null : _buildFloatingActionButton(),
+    );
+  }
+
+  Widget _buildModernAppBar() {
+    return SliverAppBar(
+      expandedHeight: 120,
+      pinned: true,
+      backgroundColor: Constants.primaryColor,
+      elevation: 0,
+      stretch: true,
+      // Fixed positioned buttons
+      leading: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(200),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(10),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: Colors.black87,
+          ),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      actions: [
+        Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(200),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(10),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              flexibleSpace: FlexibleSpaceBar(
-                title: null, // Remove default title
-                centerTitle: true,
-                background: Container(
+            ],
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.share_rounded,
+              color: Colors.black87,
+            ),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              // TODO: Implement share functionality
+              _showSnackBar('Share feature coming soon!');
+            },
+          ),
+        ),
+      ],
+      // Centered title when collapsed
+      title: const Text(
+        'Profile',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+        ),
+      ),
+      centerTitle: true,
+      flexibleSpace: FlexibleSpaceBar(
+        titlePadding: EdgeInsets.zero,
+        centerTitle: true,
+        background: Stack(
+          children: [
+            // Animated background
+            AnimatedBuilder(
+              animation: _rotationAnimation,
+              builder: (context, child) {
+                return Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF1E3A8A), // Deeper blue
-                        Constants.primaryColor,
-                        Constants.secondaryColor,
-                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      stops: const [0.0, 0.5, 1.0],
+                      colors: [
+                        const Color(0xFF667EEA),
+                        Constants.primaryColor,
+                        Constants.secondaryColor,
+                        const Color(0xFF764BA2),
+                      ],
+                      stops: const [0.0, 0.3, 0.7, 1.0],
+                      transform: GradientRotation(_rotationAnimation.value * 0.5),
                     ),
                   ),
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 20),
-                      child: Column(
-                        children: [
-                          // Custom positioned title
-                          const Text(
-                            'Profile',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: withValues(Colors.white, 0.2),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Text(
-                              'Smart Tank',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                );
+              },
+            ),
+            // Overlay pattern
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withAlpha(20),
+                  ],
                 ),
-                collapseMode: CollapseMode.parallax,
               ),
             ),
-          ];
-        },
-        body:
-            _isLoading
-                ? _buildLoadingContent()
-                : _errorMessage.isNotEmpty
-                ? _buildErrorContent()
-                : _buildMainContent(),
+            // Empty content area
+            const SizedBox.shrink(),
+          ],
+        ),
+        collapseMode: CollapseMode.parallax,
       ),
     );
   }
 
-  // New improved shimmer implementation
+  Widget _buildFloatingActionButton() {
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: FloatingActionButton.extended(
+        onPressed: () {
+          HapticFeedback.mediumImpact();
+          Navigator.pushNamed(context, RouteManager.updateDataRoute);
+        },
+        backgroundColor: Constants.primaryColor,
+        elevation: 8,
+        icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 20),
+        label: const Text(
+          'Edit Profile',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(25),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLoadingContent() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            _buildShimmerProfileCard(),
+            const SizedBox(height: 20),
+            _buildShimmerAchievementsCard(),
+            const SizedBox(height: 20),
+            _buildShimmerInfoCard(),
+            const SizedBox(height: 20),
+            _buildShimmerStatsCard(),
+            const SizedBox(height: 20),
+            _buildShimmerQuickActionsCard(),
+            const SizedBox(height: 100), // Space for FAB
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerProfileCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+      ),
       child: Column(
         children: [
-          _buildShimmerProfileHeader(),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              children: [
-                _buildShimmerInfoCard(),
-                const SizedBox(height: 20),
-                _buildShimmerBioCard(),
-                const SizedBox(height: 20),
-                _buildShimmerStatsCard(),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(child: _buildShimmerActionButton()),
-                    const SizedBox(width: 15),
-                    Expanded(child: _buildShimmerActionButton()),
-                  ],
+          // Profile Image with animated background circle
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              // Background circle
+              Container(
+                width: 140,
+                height: 140,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 40),
-              ],
+              ),
+              // Profile image placeholder
+              Container(
+                width: 120,
+                height: 120,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              // Camera button placeholder
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // User name placeholder
+          Container(
+            width: 150,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Role badge placeholder
+          Container(
+            width: 200,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Join date placeholder
+          Container(
+            width: 180,
+            height: 16,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
         ],
@@ -435,169 +697,183 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Shimmer base widget to avoid code duplication
-  Widget _buildShimmerBase({required Widget child}) {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
-      child: child,
-    );
-  }
-
-  // Shimmer container for consistent styling
-  Widget _buildShimmerContainer({
-    required double width,
-    required double height,
-    double borderRadius = 8,
-    BoxShape shape = BoxShape.rectangle,
-  }) {
+  Widget _buildShimmerAchievementsCard() {
     return Container(
-      width: width,
-      height: height,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        shape: shape,
-        borderRadius:
-            shape == BoxShape.rectangle
-                ? BorderRadius.circular(borderRadius)
-                : null,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 120,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Achievement items
+          ...List.generate(3, (index) => _buildShimmerAchievementItem()),
+        ],
       ),
     );
   }
 
-  Widget _buildShimmerProfileHeader() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: Material(
+  Widget _buildShimmerAchievementItem() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
         color: Colors.white,
-        elevation: 4,
-        shadowColor: withValues(Constants.primaryColor, 0.06),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.only(
-            top: 30,
-            bottom: 30,
-            right: 40,
-            left: 40,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-          child: _buildShimmerBase(
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildShimmerContainer(
-                  width: 130,
-                  height: 130,
-                  shape: BoxShape.circle,
+                Container(
+                  width: double.infinity,
+                  height: 15,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(7),
+                  ),
                 ),
-                const SizedBox(height: 20),
-                _buildShimmerContainer(
+                const SizedBox(height: 4),
+                Container(
                   width: 150,
-                  height: 24,
-                  borderRadius: 12,
+                  height: 13,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                 ),
                 const SizedBox(height: 8),
-                _buildShimmerContainer(
-                  width: 200,
-                  height: 30,
-                  borderRadius: 20,
+                Container(
+                  width: double.infinity,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildShimmerInfoCard() {
-    return _buildShimmerCard(
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
+          // Header
           Row(
             children: [
-              _buildShimmerBase(
-                child: _buildShimmerContainer(
-                  width: 46,
-                  height: 46,
-                  borderRadius: 14,
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              const SizedBox(width: 15),
-              _buildShimmerBase(
-                child: _buildShimmerContainer(
-                  width: 150,
-                  height: 20,
-                  borderRadius: 10,
+              const SizedBox(width: 12),
+              Container(
+                width: 160,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(9),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          _buildShimmerInfoRow(),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(height: 1),
-          ),
-          _buildShimmerInfoRow(),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(height: 1),
-          ),
-          _buildShimmerInfoRow(),
+          // Contact items
+          ...List.generate(3, (index) => _buildShimmerContactItem()),
         ],
       ),
     );
   }
 
-  Widget _buildShimmerBioCard() {
-    return _buildShimmerCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+  Widget _buildShimmerContactItem() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
         children: [
-          Row(
-            children: [
-              _buildShimmerBase(
-                child: _buildShimmerContainer(
-                  width: 46,
-                  height: 46,
-                  borderRadius: 14,
-                ),
-              ),
-              const SizedBox(width: 15),
-              _buildShimmerBase(
-                child: _buildShimmerContainer(
-                  width: 100,
-                  height: 20,
-                  borderRadius: 10,
-                ),
-              ),
-            ],
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-          const SizedBox(height: 16),
-          _buildShimmerBase(
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
-                _buildShimmerContainer(
-                  width: double.infinity,
+                Container(
+                  width: 80,
                   height: 12,
-                  borderRadius: 6,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                 ),
-                const SizedBox(height: 8),
-                _buildShimmerContainer(
+                const SizedBox(height: 4),
+                Container(
                   width: double.infinity,
-                  height: 12,
-                  borderRadius: 6,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(7),
+                  ),
                 ),
-                const SizedBox(height: 8),
-                _buildShimmerContainer(width: 200, height: 12, borderRadius: 6),
               ],
             ),
           ),
@@ -607,320 +883,402 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildShimmerStatsCard() {
-    return _buildShimmerCard(
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
+          // Header
           Row(
             children: [
-              _buildShimmerBase(
-                child: _buildShimmerContainer(
-                  width: 46,
-                  height: 46,
-                  borderRadius: 14,
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              const SizedBox(width: 15),
-              _buildShimmerBase(
-                child: _buildShimmerContainer(
-                  width: 150,
-                  height: 20,
-                  borderRadius: 10,
+              const SizedBox(width: 12),
+              Container(
+                width: 140,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(9),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          _buildShimmerStatRow(),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Divider(height: 1),
+          // 2x2 grid of stat items
+          Row(
+            children: [
+              Expanded(child: _buildShimmerStatItem()),
+              const SizedBox(width: 12),
+              Expanded(child: _buildShimmerStatItem()),
+            ],
           ),
-          _buildShimmerStatRow(),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Divider(height: 1),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _buildShimmerStatItem()),
+              const SizedBox(width: 12),
+              Expanded(child: _buildShimmerStatItem()),
+            ],
           ),
-          _buildShimmerStatRow(),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Divider(height: 1),
-          ),
-          _buildShimmerStatRow(),
         ],
       ),
     );
   }
 
-  Widget _buildShimmerInfoRow() {
-    return _buildShimmerBase(
-      child: Row(
+  Widget _buildShimmerStatItem() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
         children: [
-          _buildShimmerContainer(width: 24, height: 24, shape: BoxShape.circle),
-          const SizedBox(width: 10),
-          _buildShimmerContainer(width: 200, height: 16, borderRadius: 8),
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: 40,
+            height: 18,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(9),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            width: 60,
+            height: 12,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildShimmerStatRow() {
-    return _buildShimmerBase(
+  Widget _buildShimmerQuickActionsCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 120,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Action buttons grid
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerCard({double height = 100}) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+    );
+  }
+
+  Widget _buildErrorContent() {
+    return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildShimmerContainer(width: 100, height: 16, borderRadius: 8),
-            _buildShimmerContainer(width: 50, height: 16, borderRadius: 8),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFED7D7),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                color: Color(0xFFE53E3E),
+                size: 48,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Oops! Something went wrong',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _fetchUserData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Constants.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                elevation: 4,
+              ),
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+              label: const Text(
+                'Try Again',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildShimmerActionButton() {
-    return _buildShimmerBase(
-      child: _buildShimmerContainer(
-        width: double.infinity,
-        height: 60,
-        borderRadius: 16,
-      ),
-    );
-  }
-
-  Widget _buildShimmerCard({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: withValues(Constants.greyColor, 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(padding: const EdgeInsets.all(22), child: child),
-    );
-  }
-
-  Widget _buildErrorContent() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline_rounded,
-            color: Constants.warningColor,
-            size: 48,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Error Loading Profile',
-            style: TextStyle(
-              color: Constants.blackColor,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              _errorMessage,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Constants.greyColor, fontSize: 14),
-            ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _fetchUserData,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Constants.primaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('Try Again'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMainContent() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        children: [
-          _buildProfileHeader(),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              children: [
-                _buildInfoCard(),
-                const SizedBox(height: 20),
-                _buildBioCard(),
-                const SizedBox(height: 20),
-                _buildStatsCard(),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildActionButton(
-                        icon: Icons.history_rounded,
-                        label: 'Usage History',
-                        color: Constants.warningColor,
-                        onTap: () {},
-                      ),
-                    ),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: _buildActionButton(
-                        icon: Icons.water_drop_rounded,
-                        label: 'My Tanks',
-                        color: Constants.primaryColor,
-                        onTap:
-                            () => Navigator.pushNamed(
-                              context,
-                              RouteManager.tanksRoute,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 40),
-              ],
-            ),
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              _buildProfileCard(),
+              const SizedBox(height: 20),
+              _buildAchievementsCard(),
+              const SizedBox(height: 20),
+              _buildInfoCard(),
+              const SizedBox(height: 20),
+              _buildStatsCard(),
+              const SizedBox(height: 20),
+              _buildQuickActionsCard(),
+              const SizedBox(height: 100), // Space for FAB
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildProfileHeader() {
+  Widget _buildProfileCard() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
-      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
+        borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: withValues(Constants.primaryColor, 0.08),
+            color: Colors.black.withAlpha(5),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Add some space at the top for better visual balance
-          const SizedBox(height: 12),
-
-          // Profile image with camera icon
+          // Profile Image with modern styling
           GestureDetector(
             onTap: _showImageSourceDialog,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: withValues(Constants.accentColor, 0.2),
-                  width: 2,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Animated background circle
+                AnimatedBuilder(
+                  animation: _rotationAnimation,
+                  builder: (context, child) {
+                    return Transform.rotate(
+                      angle: _rotationAnimation.value * 2,
+                      child: Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              Constants.primaryColor.withAlpha(50),
+                              Constants.secondaryColor.withAlpha(50),
+                              Constants.primaryColor.withAlpha(50),
+                            ],
+                            stops: const [0.0, 0.5, 1.0],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              ),
-              child: Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  // Profile image
-                  CircleAvatar(
-                    radius: 70, // Slightly larger avatar
-                    backgroundColor: Constants.accentColor.withAlpha(60),
-                    backgroundImage:
-                        _selectedImage != null
-                            ? FileImage(_selectedImage!)
-                            : _user?.avatarUrl != null &&
-                                _user!.avatarUrl?.isNotEmpty == true
+                // Profile image container
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white,
+                      width: 4,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(20),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: CircleAvatar(
+                    radius: 58,
+                    backgroundColor: Constants.primaryColor.withAlpha(100),
+                    backgroundImage: _selectedImage != null
+                        ? FileImage(_selectedImage!)
+                        : _user?.avatarUrl != null && _user!.avatarUrl!.isNotEmpty
                             ? NetworkImage(_user!.avatarUrl!)
                             : null,
-                    child:
-                        (_selectedImage == null &&
-                                (_user?.avatarUrl == null ||
-                                    _user!.avatarUrl?.isEmpty != false))
-                            ? Text(
-                              _user?.name.isNotEmpty == true
-                                  ? _user!.name[0].toUpperCase()
-                                  : 'U',
-                              style: const TextStyle(
-                                fontSize: 56,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            )
-                            : null,
+                    child: (_selectedImage == null &&
+                            (_user?.avatarUrl == null || _user!.avatarUrl!.isEmpty))
+                        ? Text(
+                            _user?.name.isNotEmpty == true
+                                ? _user!.name[0].toUpperCase()
+                                : 'U',
+                            style: const TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          )
+                        : null,
                   ),
-
-                  // Camera icon
-                  Container(
+                ),
+                // Camera button
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Constants.primaryColor,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2.5),
+                      border: Border.all(color: Colors.white, width: 3),
                       boxShadow: [
                         BoxShadow(
-                          color: withValues(Constants.primaryColor, 0.25),
+                          color: Constants.primaryColor.withAlpha(60),
                           blurRadius: 8,
-                          offset: const Offset(0, 3),
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: const Icon(
                       Icons.camera_alt_rounded,
-                      size: 20,
+                      size: 18,
                       color: Colors.white,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-
-          // Name with increased spacing
-          const SizedBox(height: 24),
+          
+          const SizedBox(height: 20),
+          
+          // User name
           Text(
             _user?.name ?? 'User',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 28, // Slightly larger font
+            style: const TextStyle(
+              fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Constants.blackColor,
-              letterSpacing: 0.5,
+              color: Colors.black87,
             ),
           ),
-
-          // Role badge with improved spacing
-          const SizedBox(height: 12),
+          
+          const SizedBox(height: 8),
+          
+          // Role with improved styling
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: withValues(Constants.accentColor, 0.15),
+              gradient: LinearGradient(
+                colors: [
+                  Constants.primaryColor.withAlpha(20),
+                  Constants.secondaryColor.withAlpha(20),
+                ],
+              ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: withValues(Constants.accentColor, 0.3),
+                color: Constants.primaryColor.withAlpha(60),
                 width: 1,
               ),
             ),
@@ -933,268 +1291,599 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
+          
+          const SizedBox(height: 16),
+          
+          // Join date with icon
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.calendar_today_rounded,
+                size: 16,
+                color: Colors.grey.shade600,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Member since ${_user?.getFormattedJoinDate() ?? 'N/A'}',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildBioCard() => _buildCard(
-    titleIcon: Icons.info_outline_rounded,
-    title: 'About Me',
-    child: Text(
-      _bio,
-      style: TextStyle(
-        fontSize: 15,
-        color: withValues(Constants.blackColor, .7),
-        height: 1.5,
+  Widget _buildAchievementsCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
-    ),
-  );
-
-  Widget _buildStatsCard() => _buildCard(
-    titleIcon: Icons.bar_chart_rounded,
-    title: 'Account Statistics',
-    child: Column(
-      children: [
-        _buildStatRow('Total Tanks', '${_user?.tanks.length ?? 0}'),
-        Divider(color: Colors.grey.withAlpha(100)),
-        _buildStatRow('Total Bills', '${_user?.bills.length ?? 0}'),
-        Divider(color: Colors.grey.withAlpha(100)),
-        _buildStatRow(
-          'Identity Number',
-          _user?.identityNumber ?? 'Not available',
-        ),
-        Divider(color: Colors.grey.withAlpha(100)),
-        _buildStatRow('Account Status', 'Active'),
-      ],
-    ),
-  );
-
-  Widget _buildCard({
-    required IconData titleIcon,
-    required String title,
-    required Widget child,
-  }) => Container(
-    margin: const EdgeInsets.only(bottom: 16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(24),
-      boxShadow: [
-        BoxShadow(
-          color: withValues(Constants.primaryColor, 0.06),
-          blurRadius: 20,
-          spreadRadius: 0,
-          offset: const Offset(0, 6),
-        ),
-      ],
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: withValues(Constants.accentColor, 0.12),
-                  borderRadius: BorderRadius.circular(14),
+                  color: const Color(0xFFFFF2E5),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(titleIcon, color: Constants.primaryColor, size: 22),
+                child: const Icon(
+                  Icons.emoji_events_rounded,
+                  color: Color(0xFFFF9500),
+                  size: 24,
+                ),
               ),
-              const SizedBox(width: 15),
-              Text(
-                title,
+              const SizedBox(width: 12),
+              const Text(
+                'Achievements',
                 style: TextStyle(
-                  fontSize: 19,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Constants.blackColor,
-                  letterSpacing: 0.3,
+                  color: Colors.black87,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          child,
+          const SizedBox(height: 16),
+          ..._achievements.map((achievement) => _buildAchievementItem(achievement)),
         ],
       ),
-    ),
-  );
+    );
+  }
 
-  Widget _buildInfoCard() => Container(
-    margin: const EdgeInsets.only(bottom: 16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(24),
-      boxShadow: [
-        BoxShadow(
-          color: withValues(Constants.primaryColor, 0.06),
-          blurRadius: 20,
-          spreadRadius: 0,
-          offset: const Offset(0, 6),
+  Widget _buildAchievementItem(Map<String, dynamic> achievement) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: (achievement['color'] as Color).withAlpha(10),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: (achievement['color'] as Color).withAlpha(50),
+          width: 1,
         ),
-      ],
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(22),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: achievement['color'],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              achievement['icon'],
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  achievement['title'],
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  achievement['description'],
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                LinearProgressIndicator(
+                  value: achievement['progress'],
+                  backgroundColor: Colors.grey.shade200,
+                  valueColor: AlwaysStoppedAnimation(achievement['color']),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: withValues(Constants.accentColor, 0.12),
-                  borderRadius: BorderRadius.circular(14),
+                  color: Constants.primaryColor.withAlpha(20),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.person_rounded,
                   color: Constants.primaryColor,
-                  size: 22,
+                  size: 24,
                 ),
               ),
-              const SizedBox(width: 15),
-              Text(
+              const SizedBox(width: 12),
+              const Text(
                 'Contact Information',
                 style: TextStyle(
-                  fontSize: 19,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Constants.blackColor,
-                  letterSpacing: 0.3,
+                  color: Colors.black87,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          _buildInfoRow(
+          const SizedBox(height: 16),
+          _buildContactItem(
             Icons.email_rounded,
-            _user?.email ?? 'Email not available',
+            'Email',
+            _user?.email ?? 'Not available',
           ),
-          Divider(color: withValues(Constants.greyColor, 0.15), height: 24),
-          _buildInfoRow(
+          _buildContactItem(
             Icons.phone_rounded,
-            _user?.phone ?? 'Phone not available',
+            'Phone',
+            _user?.phone ?? 'Not available',
           ),
-          Divider(color: withValues(Constants.greyColor, 0.15), height: 24),
-          _buildInfoRow(
-            Icons.calendar_today_rounded,
-            _user?.getFormattedJoinDate() ?? 'Join date not available',
+          _buildContactItem(
+            Icons.badge_rounded,
+            'ID Number',
+            _user?.identityNumber ?? 'Not available',
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
 
-  Widget _buildInfoRow(IconData icon, String text) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: withValues(Constants.accentColor, 0.12),
-            borderRadius: BorderRadius.circular(12),
+  Widget _buildContactItem(IconData icon, String label, String value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: Constants.primaryColor,
+            size: 20,
           ),
-          child: Icon(icon, color: Constants.primaryColor, size: 20),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 15,
-              color: Constants.blackColor,
-              fontWeight: FontWeight.w500,
-              height: 1.3,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 
-  Widget _buildStatRow(String label, String value) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 15,
-            color: Constants.greyColor,
-            fontWeight: FontWeight.w500,
+  Widget _buildStatsCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6F7FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.bar_chart_rounded,
+                  color: Color(0xFF1890FF),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Account Statistics',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatItem(
+                  'Total Tanks',
+                  '${_user?.tanks.length ?? 0}',
+                  Icons.water_drop_rounded,
+                  const Color(0xFF4CAF50),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatItem(
+                  'Total Bills',
+                  '${_user?.bills.length ?? 0}',
+                  Icons.receipt_rounded,
+                  const Color(0xFFFF9800),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatItem(
+                  'Account Status',
+                  'Active',
+                  Icons.verified_rounded,
+                  const Color(0xFF2196F3),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatItem(
+                  'Member Level',
+                  'Premium',
+                  Icons.stars_rounded,
+                  const Color(0xFF9C27B0),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withAlpha(10),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withAlpha(50),
+          width: 1,
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: withValues(Constants.accentColor, 0.12),
-            borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: 24,
           ),
-          child: Text(
+          const SizedBox(height: 8),
+          Text(
             value,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Constants.primaryColor,
+              color: color,
             ),
           ),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F9FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.touch_app_rounded,
+                  color: Color(0xFF0EA5E9),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Quick Actions',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.water_drop_rounded,
+                  label: 'My Tanks',
+                  color: const Color(0xFF4CAF50),
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    Navigator.pushNamed(context, RouteManager.tanksRoute);
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.history_rounded,
+                  label: 'Usage History',
+                  color: const Color(0xFFFF9800),
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    _showSnackBar('Usage history feature coming soon!');
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.receipt_rounded,
+                  label: 'My Bills',
+                  color: const Color(0xFF2196F3),
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    Navigator.pushNamed(context, RouteManager.billsRoute);
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.settings_rounded,
+                  label: 'Settings',
+                  color: const Color(0xFF9C27B0),
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    _showSnackBar('Settings feature coming soon!');
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildActionButton({
     required IconData icon,
     required String label,
     required Color color,
     required VoidCallback onTap,
-  }) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(20),
-    child: Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: withValues(Constants.primaryColor, 0.06),
-            blurRadius: 20,
-            spreadRadius: 0,
-            offset: const Offset(0, 6),
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withAlpha(10),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: color.withAlpha(50),
+            width: 1,
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
+        ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: withValues(color, 0.12),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(icon, color: color, size: 26),
+            Icon(
+              icon,
+              color: color,
+              size: 24,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               label,
-              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Constants.blackColor,
-                letterSpacing: 0.2,
+                color: color,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
       ),
-    ),
-  );
+    );
+  }
+
+  Widget _buildProfileOption({
+    required String title,
+    required IconData icon,
+    required VoidCallback onTap,
+    Color? iconColor,
+  }) {
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: iconColor ?? Constants.primaryColor,
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: const Icon(
+        Icons.chevron_right,
+        color: Colors.grey,
+      ),
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildProfileOptions() {
+    return Column(
+      children: [
+        _buildProfileOption(
+          title: 'Edit Profile',
+          icon: Icons.edit_outlined,
+          onTap: () {
+            // TODO: Implement edit profile functionality
+          },
+        ),
+        _buildProfileOption(
+          title: 'Change Password',
+          icon: Icons.lock_outline,
+          onTap: () {
+            // TODO: Implement change password functionality
+          },
+        ),
+        _buildProfileOption(
+          title: 'Notifications',
+          icon: Icons.notifications_outlined,
+          onTap: () {
+            Navigator.pushNamed(context, RouteManager.notificationsRoute);
+          },
+        ),
+        _buildProfileOption(
+          title: 'Help & Support',
+          icon: Icons.help_outline,
+          onTap: () {
+            // TODO: Implement help & support functionality
+          },
+        ),
+        _buildProfileOption(
+          title: 'Logout',
+          icon: Icons.logout,
+          iconColor: Colors.red,
+          onTap: _handleLogout,
+        ),
+      ],
+    );
+  }
+
+  void _handleLogout() {
+    // TODO: Implement logout functionality
+  }
 }

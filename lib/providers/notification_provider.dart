@@ -3,12 +3,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mytank/models/notification_model.dart';
 import 'package:mytank/services/socket_service.dart';
 import 'package:mytank/services/user_service.dart';
+import 'package:mytank/utilities/token_manager.dart';
+import 'dart:async';
 
 class NotificationProvider with ChangeNotifier {
   List<NotificationModel> _notifications = [];
   bool _isLoading = false;
   String? _error;
   bool _isSocketConnected = false;
+  Timer? _heartbeatTimer;
+  Timer? _reconnectTimer;
+  String? _currentUserId;
 
   List<NotificationModel> get notifications => _notifications;
   bool get isLoading => _isLoading;
@@ -177,6 +182,8 @@ class NotificationProvider with ChangeNotifier {
   void initializeRealTimeNotifications(String userId, String token) {
     try {
       debugPrint('🔔 Initializing real-time notifications for user: $userId');
+      
+      _currentUserId = userId;
 
       final socketService = SocketService.instance;
 
@@ -189,12 +196,27 @@ class NotificationProvider with ChangeNotifier {
       // Connect to socket server
       socketService.connect(userId, token);
 
+      // Start heartbeat to maintain connection
+      _startHeartbeat();
+
       debugPrint('✅ Real-time notifications initialized');
     } catch (e) {
       debugPrint('❌ Error initializing real-time notifications: $e');
       _error = 'Failed to initialize real-time notifications: $e';
       notifyListeners();
     }
+  }
+
+  // Start heartbeat to ensure connection stays alive
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(Duration(seconds: 30), (timer) {
+      final socketService = SocketService.instance;
+      if (socketService.isConnected && _currentUserId != null) {
+        socketService.emit('heartbeat', {'userId': _currentUserId});
+        debugPrint('💓 Heartbeat sent');
+      }
+    });
   }
 
   // Handle new notification received via Socket.IO
@@ -224,13 +246,18 @@ class NotificationProvider with ChangeNotifier {
       // Clear any previous errors
       _error = null;
 
-      // Notify listeners to update UI
+      // Notify listeners to update UI IMMEDIATELY
       notifyListeners();
 
       debugPrint(
         '✅ New notification added successfully. Total: ${_notifications.length}',
       );
       debugPrint('📊 Unread count: $unreadCount');
+
+      // Schedule another notification to ensure UI updates
+      Future.delayed(Duration(milliseconds: 100), () {
+        notifyListeners();
+      });
 
       // Show a brief summary of all notifications
       debugPrint('📋 Current notifications:');
@@ -255,7 +282,15 @@ class NotificationProvider with ChangeNotifier {
     debugPrint('✅ Socket connected - real-time notifications active');
     _isSocketConnected = true;
     _error = null;
+    
+    // Cancel any existing reconnect timer
+    _reconnectTimer?.cancel();
+    
+    // Notify UI immediately
     notifyListeners();
+    
+    // Start heartbeat to maintain connection
+    _startHeartbeat();
   }
 
   // Handle socket disconnection
@@ -263,6 +298,12 @@ class NotificationProvider with ChangeNotifier {
     debugPrint('🔌 Socket disconnected - real-time notifications inactive');
     _isSocketConnected = false;
     notifyListeners();
+    
+    // Stop heartbeat
+    _heartbeatTimer?.cancel();
+    
+    // Attempt to reconnect after 5 seconds
+    _attemptReconnect();
   }
 
   // Handle socket errors
@@ -271,6 +312,34 @@ class NotificationProvider with ChangeNotifier {
     _isSocketConnected = false;
     _error = 'Real-time connection error: $error';
     notifyListeners();
+    
+    // Attempt to reconnect after 3 seconds
+    _attemptReconnect();
+  }
+
+  // Attempt to reconnect to socket
+  void _attemptReconnect() {
+    if (_currentUserId == null) return;
+    
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(Duration(seconds: 5), () async {
+      if (!_isSocketConnected && _currentUserId != null) {
+        debugPrint('🔄 Attempting to reconnect real-time notifications...');
+        try {
+          // Get current token for reconnection
+          final token = await TokenManager.getToken();
+          if (token != null) {
+            final socketService = SocketService.instance;
+            socketService.connect(_currentUserId!, token);
+            debugPrint('✅ Reconnection attempt initiated with valid token');
+          } else {
+            debugPrint('❌ No valid token found for reconnection');
+          }
+        } catch (e) {
+          debugPrint('❌ Reconnection failed: $e');
+        }
+      }
+    });
   }
 
   // Disconnect real-time notifications
@@ -282,6 +351,11 @@ class NotificationProvider with ChangeNotifier {
       socketService.disconnect();
 
       _isSocketConnected = false;
+      _currentUserId = null;
+      
+      // Cancel timers
+      _heartbeatTimer?.cancel();
+      _reconnectTimer?.cancel();
 
       debugPrint('✅ Real-time notifications disconnected');
       notifyListeners();
@@ -331,5 +405,12 @@ class NotificationProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('❌ Error testing server format: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    _heartbeatTimer?.cancel();
+    _reconnectTimer?.cancel();
+    super.dispose();
   }
 }

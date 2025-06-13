@@ -25,10 +25,24 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Update user ID (useful when fetching from API)
+  void updateUserId(String id) {
+    _userId = id;
+    notifyListeners();
+    debugPrint('✅ User ID updated: $_userId');
+  }
+
   // Initialize real-time notifications (to be called after login)
   void initializeRealTimeNotifications(BuildContext context) {
+    debugPrint('🔔 Attempting to initialize real-time notifications...');
+    debugPrint('🔔 Access token available: ${_accessToken != null}');
+    debugPrint('🔔 User ID available: ${_userId != null}');
+    debugPrint('🔔 User ID value: $_userId');
+    
     if (_accessToken != null && _userId != null) {
       try {
+        debugPrint('🔔 Initializing real-time notifications with valid credentials');
+        
         // Get notification provider and initialize real-time notifications
         final notificationProvider = Provider.of<NotificationProvider>(
           context,
@@ -43,6 +57,10 @@ class AuthProvider with ChangeNotifier {
       } catch (e) {
         debugPrint('❌ Error initializing real-time notifications: $e');
       }
+    } else {
+      debugPrint('❌ Cannot initialize real-time notifications: Missing credentials');
+      if (_accessToken == null) debugPrint('  - Missing access token');
+      if (_userId == null) debugPrint('  - Missing user ID');
     }
   }
 
@@ -57,7 +75,7 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    final Uri url = Uri.parse('${Constants.baseUrl}/customer/login');
+    final Uri url = Uri.parse('${Constants.apiUrl}/customer/login');
 
     debugPrint('🌐 Using login URL: ${url.toString()}');
     final Map<String, String> body = {
@@ -115,16 +133,29 @@ class AuthProvider with ChangeNotifier {
                   '📄 Response data keys: ${responseData.keys.toList()}',
                 );
 
+                // Check different possible response structures
                 if (responseData['data'] != null) {
+                  // If response has 'data' wrapper
                   _userName = responseData['data']['name'] ?? 'User';
-                  _userId = responseData['data']['id']?.toString();
-                  debugPrint(
-                    '👤 User info extracted: $_userName (ID: $_userId)',
-                  );
+                  _userId = responseData['data']['_id']?.toString() ?? 
+                           responseData['data']['id']?.toString();
+                } else if (responseData['_id'] != null) {
+                  // If response is the user object directly
+                  _userName = responseData['name'] ?? 'User';
+                  _userId = responseData['_id']?.toString();
+                } else {
+                  // Fallback
+                  _userName = 'User';
+                  _userId = null;
                 }
+                
+                debugPrint(
+                  '👤 User info extracted: $_userName (ID: $_userId)',
+                );
               } catch (e) {
                 debugPrint('❌ Error parsing user data: $e');
                 _userName = 'User';
+                _userId = null;
               }
             } else {
               debugPrint('❌ Token value is null after regex match');
@@ -183,5 +214,39 @@ class AuthProvider with ChangeNotifier {
 
     // Perform regular logout
     await logout();
+  }
+
+  Future<bool> register({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${Constants.apiUrl}/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'phone': phone,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _accessToken = data['token'];
+        _userName = data['user']['name'];
+        _userId = data['user']['_id'];
+        await TokenManager.saveToken(data['token']);
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Registration error: $e');
+      return false;
+    }
   }
 }

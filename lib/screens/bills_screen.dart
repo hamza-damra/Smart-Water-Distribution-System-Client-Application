@@ -1,5 +1,6 @@
 // bills_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/bills_provider.dart';
@@ -9,6 +10,7 @@ import '../utilities/constants.dart';
 import '../widgets/bills_shimmer_loading.dart';
 import '../services/pdf_service.dart';
 import 'dart:io';
+import 'dart:async';
 
 // Helper method to replace deprecated withOpacity
 Color withValues(Color color, double opacity) {
@@ -27,14 +29,79 @@ class BillsScreen extends StatefulWidget {
   State<BillsScreen> createState() => _BillsScreenState();
 }
 
-class _BillsScreenState extends State<BillsScreen> {
+class _BillsScreenState extends State<BillsScreen> 
+    with TickerProviderStateMixin {
+  
+  // Animation controllers
+  late AnimationController _rotationController;
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  
+  // Animations
+  late Animation<double> _rotationAnimation;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
   @override
   void initState() {
     super.initState();
+    _initializeAnimations();
     // Use a post-frame callback to avoid calling setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchBills();
     });
+  }
+
+  void _initializeAnimations() {
+    _rotationController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    );
+
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+
+    _rotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _rotationController,
+      curve: Curves.linear,
+    ));
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    // Start background rotation animation
+    _rotationController.repeat();
+  }
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    _fadeController.dispose();
+    _slideController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchBills() async {
@@ -42,13 +109,52 @@ class _BillsScreenState extends State<BillsScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final billsProvider = Provider.of<BillsProvider>(context, listen: false);
       await billsProvider.fetchBills(authProvider);
+      
+      // Start animations when data is loaded
+      _fadeController.forward();
+      _slideController.forward();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error loading bills: $e')));
+        _showSnackBar('Error loading bills: $e', isError: true);
       }
     }
+  }
+
+  Future<void> _refreshBills() async {
+    HapticFeedback.mediumImpact();
+    await _fetchBills();
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle_outline,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: isError ? const Color(0xFFE53E3E) : const Color(0xFF38A169),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        margin: const EdgeInsets.all(16),
+        duration: Duration(seconds: isError ? 4 : 2),
+      ),
+    );
   }
 
   @override
@@ -59,472 +165,693 @@ class _BillsScreenState extends State<BillsScreen> {
     final totalMargin = billsProvider.totalBillsMargin;
 
     return Scaffold(
-      backgroundColor: const Color(
-        0xFFF8F9FD,
-      ), // Light blue-gray background for modern look
+      backgroundColor: const Color(0xFFF8FAFC), // Modern background color
       body: RefreshIndicator(
-        onRefresh: _fetchBills,
-        child:
-            billsProvider.isLoading
-                ? const BillsShimmerLoadingEffect()
-                : billsProvider.error != null
-                ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        color: Constants.errorColor,
-                        size: 48,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Error: ${billsProvider.error}',
-                        style: const TextStyle(
-                          color: Constants.errorColor,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: _fetchBills,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Try Again'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Constants.primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-                : bills.isEmpty
-                ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.receipt_long,
-                        color: Colors.grey.shade400,
-                        size: 64,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No bills found',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Your bills will appear here when available',
-                        style: TextStyle(
-                          color: Colors.grey.shade500,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-                : NestedScrollView(
-                  headerSliverBuilder: (context, innerBoxIsScrolled) {
-                    return [
-                      SliverAppBar(
-                        expandedHeight:
-                            MediaQuery.of(context).size.height *
-                            0.38, // Significantly increased responsive height
-                        pinned: true,
-                        backgroundColor: Constants.primaryColor,
-                        elevation: innerBoxIsScrolled ? 4 : 0,
-                        leading: Container(
-                          margin: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: withValues(Colors.white, 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.arrow_back_rounded,
-                              color: Colors.white,
-                            ),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ),
-                        actions: [
-                          Container(
-                            margin: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: withValues(Colors.white, 0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.refresh_rounded,
-                                color: Colors.white,
-                              ),
-                              onPressed: _fetchBills,
-                            ),
-                          ),
-                        ],
-                        flexibleSpace: FlexibleSpaceBar(
-                          title: null, // Remove default title
-                          centerTitle: true,
-                          background: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  const Color(0xFF1E3A8A), // Deeper blue
-                                  Constants.primaryColor,
-                                  Constants.secondaryColor,
-                                ],
-                                stops: const [0.0, 0.5, 1.0],
-                              ),
-                            ),
-                            child: SafeArea(
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 10),
-                                child: Column(
-                                  children: [
-                                    // Custom positioned title
-                                    const Text(
-                                      'My Bills',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: withValues(Colors.white, 0.2),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: const Text(
-                                        'Smart Tank',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-
-                                    // Compact header with logo and title in a row
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          // Logo container
-                                          Container(
-                                            height: 45,
-                                            width: 45,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: withValues(
-                                                    Colors.black,
-                                                    0.1,
-                                                  ),
-                                                  blurRadius: 8,
-                                                  offset: const Offset(0, 3),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Icon(
-                                              Icons.receipt_long_rounded,
-                                              size: 30,
-                                              color: Constants.primaryColor,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 15),
-                                          // Title and subtitle
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const Text(
-                                                'Billing Management',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.bold,
-                                                  letterSpacing: 0.5,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 2,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: withValues(
-                                                    Colors.white,
-                                                    0.2,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                child: const Text(
-                                                  'Smart Tank',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-
-                                    // Summary cards - more compact
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          // Current bill card
-                                          Expanded(
-                                            child: _buildSummaryCard(
-                                              title: 'Current Bill',
-                                              amount: totalUnpaid,
-                                              icon: Icons.receipt,
-                                              iconColor: Colors.white,
-                                              backgroundColor:
-                                                  Colors.transparent,
-                                              borderColor: withValues(
-                                                Colors.white,
-                                                0.2,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          // Total margin card
-                                          Expanded(
-                                            child: _buildSummaryCard(
-                                              title: 'Total Margin',
-                                              amount: totalMargin,
-                                              icon:
-                                                  Icons.account_balance_wallet,
-                                              iconColor: Colors.white,
-                                              backgroundColor:
-                                                  Colors.transparent,
-                                              borderColor: withValues(
-                                                Colors.white,
-                                                0.2,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          collapseMode: CollapseMode.parallax,
-                        ),
-                      ),
-                    ];
-                  },
-                  body: Column(
-                    children: [
-                      // Filter options - more compact
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 15,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: withValues(
-                                      Constants.primaryColor,
-                                      0.1,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(
-                                    Icons.history,
-                                    color: Constants.primaryColor,
-                                    size: 16,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Billing History',
-                                  style: TextStyle(
-                                    color: Constants.blackColor,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: withValues(Constants.primaryColor, 0.05),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: withValues(
-                                    Constants.primaryColor,
-                                    0.2,
-                                  ),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.filter_list,
-                                    color: Constants.primaryColor,
-                                    size: 14,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'All Bills',
-                                    style: TextStyle(
-                                      color: Constants.primaryColor,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Bills list
-                      Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: bills.length,
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          itemBuilder: (context, index) {
-                            final bill = bills[index];
-                            return _buildBillCard(bill);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+        onRefresh: _refreshBills,
+        color: Constants.primaryColor,
+        backgroundColor: Colors.white,
+        child: billsProvider.isLoading
+            ? const BillsShimmerLoadingEffect()
+            : billsProvider.error != null
+            ? _buildErrorState()
+            : bills.isEmpty
+            ? _buildEmptyState()
+            : _buildMainContent(bills, totalUnpaid, totalMargin),
       ),
     );
   }
 
-  Widget _buildSummaryCard({
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFED7D7),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                color: Color(0xFFE53E3E),
+                size: 48,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Oops! Something went wrong',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Unable to load your bills at the moment',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                _fetchBills();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Constants.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                elevation: 4,
+              ),
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+              label: const Text(
+                'Try Again',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE3F2FD),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                Icons.receipt_long_rounded,
+                size: 48,
+                color: Constants.primaryColor,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'No Bills Found',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Your bills will appear here when available. Check back later for updates.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                _fetchBills();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Constants.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                elevation: 4,
+              ),
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+              label: const Text(
+                'Refresh',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainContent(List<Bill> bills, double totalUnpaid, double totalMargin) {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      slivers: [
+        _buildModernAppBar(totalUnpaid, totalMargin),
+        SliverToBoxAdapter(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    _buildBillsHeader(bills.length),
+                    const SizedBox(height: 20),
+                    ...bills.map((bill) => _buildModernBillCard(bill)),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModernAppBar(double totalUnpaid, double totalMargin) {
+    return SliverAppBar(
+      expandedHeight: 150,
+      pinned: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      stretch: true,
+      leading: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(220),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: Colors.black87,
+          ),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      actions: [
+        Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(220),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(15),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: Colors.black87,
+            ),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              _fetchBills();
+            },
+          ),
+        ),
+      ],
+      // Remove conflicting title from SliverAppBar
+      flexibleSpace: FlexibleSpaceBar(
+        titlePadding: EdgeInsets.zero,
+        background: Stack(
+          children: [
+            // Animated background
+            AnimatedBuilder(
+              animation: _rotationAnimation,
+              builder: (context, child) {
+                return Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFF667EEA),
+                        Constants.primaryColor,
+                        Constants.secondaryColor,
+                        const Color(0xFF764BA2),
+                      ],
+                      stops: const [0.0, 0.3, 0.7, 1.0],
+                      transform: GradientRotation(_rotationAnimation.value * 0.5),
+                    ),
+                  ),
+                );
+              },
+            ),
+            // Overlay pattern
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withAlpha(15),
+                  ],
+                ),
+              ),
+            ),
+            // Minimal header content
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Minimal header section
+                    const SizedBox(height: 4),
+                    const Text(
+                      'My Bills',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    
+                    // Added margin from top of cards
+                    const SizedBox(height: 16),
+                    
+                    // Horizontal compact summary strip
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 19,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(30),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withAlpha(80),
+                          width: 1,
+                        ),
+                      ),
+                      
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildMiniSummaryItem(
+                              'Outstanding',
+                              totalUnpaid,
+                              Icons.receipt_rounded,
+                              const Color(0xFFEF4444),
+                            ),
+                          ),
+                          Container(
+                            width: 1,
+                            height: 24,
+                            color: Colors.white.withAlpha(60),
+                          ),
+                          Expanded(
+                            child: _buildMiniSummaryItem(
+                              'Total Paid',
+                              totalMargin,
+                              Icons.account_balance_wallet_rounded,
+                              const Color(0xFF10B981),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        collapseMode: CollapseMode.parallax,
+      ),
+    );
+  }
+
+  Widget _buildModernSummaryCard({
     required String title,
     required double amount,
     required IconData icon,
-    required Color iconColor,
-    required Color backgroundColor,
-    Color? borderColor,
+    required Color color,
   }) {
-    // Get screen dimensions for responsive sizing
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 360;
-
-    // More compact, integrated design
     return Container(
-      height:
-          isSmallScreen
-              ? 90
-              : 95, // Significantly increased height to fix overflow
-      padding: EdgeInsets.symmetric(
-        vertical: isSmallScreen ? 6 : 8,
-        horizontal: isSmallScreen ? 8 : 10,
-      ),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        // Subtle glass-like effect
-        color: withValues(Colors.white, 0.08),
+        color: Colors.white.withAlpha(35),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: Colors.white.withAlpha(100),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(15),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withAlpha(60),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: Colors.white.withAlpha(80),
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '\$${amount.toStringAsFixed(2)}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.3,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactSummaryCard({
+    required String title,
+    required double amount,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(35),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: Colors.white.withAlpha(100),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withAlpha(60),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withAlpha(80),
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '\$${amount.toStringAsFixed(2)}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.2,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUltraCompactSummaryCard({
+    required String title,
+    required double amount,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(35),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: borderColor ?? withValues(Colors.white, 0.15),
-          width: 1,
+          color: Colors.white.withAlpha(100),
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(15),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Floating icon with subtle shadow
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: withValues(Colors.white, 0.2),
+              color: color.withAlpha(60),
               borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: Colors.white, size: 16),
-          ),
-          const SizedBox(width: 10),
-          // Title and amount in column - simplified layout
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.max, // Take all available space
-                mainAxisAlignment:
-                    MainAxisAlignment.spaceEvenly, // Distribute space evenly
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    '\$${amount.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16, // Slightly smaller font
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
+              border: Border.all(
+                color: Colors.white.withAlpha(80),
+                width: 1,
               ),
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 16,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.1,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '\$${amount.toStringAsFixed(2)}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.1,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniSummaryItem(
+    String title,
+    double amount,
+    IconData icon,
+    Color color,
+  ) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: color.withAlpha(60),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: 12,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                '\$${amount.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBillsHeader(int billCount) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE3F2FD),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.history_rounded,
+              color: Constants.primaryColor,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Billing History',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$billCount ${billCount == 1 ? 'bill' : 'bills'} available',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Constants.primaryColor.withAlpha(20),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Constants.primaryColor.withAlpha(50),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.filter_list_rounded,
+                  color: Constants.primaryColor,
+                  size: 16,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'All Bills',
+                  style: TextStyle(
+                    color: Constants.primaryColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -532,274 +859,282 @@ class _BillsScreenState extends State<BillsScreen> {
     );
   }
 
-  Widget _buildBillCard(Bill bill) {
-    // Get screen dimensions for responsive sizing
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 360;
+  Widget _buildModernBillCard(Bill bill) {
+    final statusColor = bill.status == 'Paid' 
+        ? const Color(0xFF10B981)
+        : const Color(0xFFEF4444);
+    
+    final statusBgColor = bill.status == 'Paid'
+        ? const Color(0xFFD1FAE5)
+        : const Color(0xFFFEE2E2);
 
-    final statusColor =
-        bill.status == 'Paid' ? Constants.successColor : Constants.errorColor;
-    final statusBgColor =
-        bill.status == 'Paid'
-            ? Color.fromRGBO(
-              56,
-              142,
-              60,
-              38, // Increased alpha for better visibility
-            )
-            : Color.fromRGBO(
-              211,
-              47,
-              47,
-              38, // Increased alpha for better visibility
-            );
-
-    // Define gradient colors based on bill status
-    final List<Color> gradientColors =
-        bill.status == 'Paid'
-            ? [
-              const Color(0xFFEBF7EE), // Light green background for paid bills
-              Colors.white,
-            ]
-            : [
-              const Color(0xFFF0F7FF), // Light blue background for unpaid bills
-              Colors.white,
-            ];
-
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shadowColor: Colors.black.withAlpha(40),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Colors.grey.withAlpha(40), width: 0.5),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: gradientColors,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(5),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
+        ],
+        border: Border.all(
+          color: statusColor.withAlpha(30),
+          width: 1,
         ),
-        child: Column(
-          children: [
-            // Bill header
-            Container(
-              padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
+      ),
+      child: Column(
+        children: [
+          // Bill header
+          Container(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: statusColor.withAlpha(20),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    Icons.receipt_rounded,
+                    color: statusColor,
+                    size: 28,
+                  ),
                 ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color:
-                              bill.status == 'Paid'
-                                  ? const Color(
-                                    0xFFE8F5E9,
-                                  ) // Light green for paid
-                                  : const Color(
-                                    0xFFE3F2FD,
-                                  ), // Light blue for unpaid
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withAlpha(10),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          Icons.receipt_outlined,
-                          color:
-                              bill.status == 'Paid'
-                                  ? Constants.successColor
-                                  : Constants.primaryColor,
-                          size: 24,
+                      Text(
+                        '${bill.monthName} ${bill.year}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${bill.monthName} ${bill.year}',
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 16 : 18,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Bill #${bill.id.substring(bill.id.length - 6)}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
-                              letterSpacing: 0.1,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 4),
+                      Text(
+                        'Bill #${bill.id.substring(bill.id.length - 6)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                     ],
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusBgColor,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: statusColor.withAlpha(40),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      bill.status,
-                      style: TextStyle(
-                        color: statusColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusBgColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: statusColor.withAlpha(100),
+                      width: 1,
                     ),
                   ),
-                ],
+                  child: Text(
+                    bill.status,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Bill details
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.grey.shade200,
+                width: 1,
               ),
             ),
-
-            // Bill details
-            Container(
-              padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(120),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.grey.withAlpha(30),
-                  width: 0.5,
+            child: Column(
+              children: [
+                _buildModernInfoRow(
+                  'Water Usage',
+                  '${bill.amount} L',
+                  Icons.water_drop_rounded,
+                  const Color(0xFF3B82F6),
                 ),
-              ),
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  _buildInfoRow(
-                    'Water Usage',
-                    '${bill.amount} L',
-                    icon: Icons.water_drop,
+                const SizedBox(height: 12),
+                _buildModernInfoRow(
+                  'Price for Water',
+                  '\$${bill.priceForLetters.toStringAsFixed(2)}',
+                  Icons.attach_money_rounded,
+                  const Color(0xFF10B981),
+                ),
+                const SizedBox(height: 12),
+                _buildModernInfoRow(
+                  'Fees',
+                  '\$${bill.fees.toStringAsFixed(2)}',
+                  Icons.account_balance_rounded,
+                  const Color(0xFFF59E0B),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: statusColor.withAlpha(10),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: statusColor.withAlpha(50),
+                      width: 1,
+                    ),
                   ),
-                  _buildInfoRow(
-                    'Price for Water',
-                    '\$${bill.priceForLetters.toStringAsFixed(2)}',
-                    icon: Icons.attach_money,
-                  ),
-                  _buildInfoRow(
-                    'Fees',
-                    '\$${bill.fees.toStringAsFixed(2)}',
-                    icon: Icons.account_balance,
-                  ),
-                  Divider(height: 24, color: Colors.grey.withAlpha(100)),
-                  _buildInfoRow(
-                    'Total',
+                  child: _buildModernInfoRow(
+                    'Total Amount',
                     '\$${bill.totalPrice.toStringAsFixed(2)}',
+                    Icons.summarize_rounded,
+                    statusColor,
                     isBold: true,
-                    icon: Icons.summarize,
                   ),
-                ],
-              ),
-            ),
-
-            // Bill actions
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 12 : 16,
-                vertical: isSmallScreen ? 12 : 16,
-              ),
-              decoration: const BoxDecoration(
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
                 ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (bill.status == 'Unpaid')
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          RouteManager.paymentRoute,
-                          arguments: bill,
-                        );
-                      },
-                      icon: const Icon(Icons.payment, size: 16),
-                      label: const Text('Pay Now'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Constants.primaryColor,
-                        foregroundColor: Colors.white,
-                        elevation: 2,
-                        shadowColor: Constants.primaryColor.withAlpha(100),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+              ],
+            ),
+          ),
+
+          // Bill actions
+          Container(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (bill.status == 'Unpaid')
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      HapticFeedback.mediumImpact();
+                      Navigator.pushNamed(
+                        context,
+                        RouteManager.paymentRoute,
+                        arguments: bill,
+                      );
+                    },
+                    icon: const Icon(Icons.payment_rounded, size: 18),
+                    label: const Text('Pay Now'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Constants.primaryColor,
+                      foregroundColor: Colors.white,
+                      elevation: 4,
+                      shadowColor: Constants.primaryColor.withAlpha(100),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
                       ),
-                    )
-                  else
-                    TextButton.icon(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          RouteManager.billDetailsRoute,
-                          arguments: bill,
-                        );
-                      },
-                      icon: const Icon(Icons.receipt, size: 16),
-                      label: const Text('View Receipt'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Constants.primaryColor,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
                       ),
                     ),
-                  const SizedBox(width: 8),
-                  TextButton.icon(
-                    onPressed: () => _downloadBillAsPdf(bill),
-                    icon: const Icon(Icons.picture_as_pdf, size: 16),
-                    label: const Text('PDF'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.grey.shade700,
+                  )
+                else
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.pushNamed(
+                        context,
+                        RouteManager.billDetailsRoute,
+                        arguments: bill,
+                      );
+                    },
+                    icon: Icon(Icons.receipt_rounded, size: 18, color: Constants.primaryColor),
+                    label: Text(
+                      'View Receipt',
+                      style: TextStyle(color: Constants.primaryColor),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Constants.primaryColor),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
                       ),
                     ),
                   ),
-                ],
-              ),
+                const SizedBox(width: 12),
+                IconButton(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    _downloadBillAsPdf(bill);
+                  },
+                  icon: const Icon(Icons.picture_as_pdf_rounded),
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFFF3F4F6),
+                    foregroundColor: Colors.grey.shade700,
+                    padding: const EdgeInsets.all(12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  tooltip: 'Download PDF',
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildModernInfoRow(
+    String label,
+    String value,
+    IconData icon,
+    Color color, {
+    bool isBold = false,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withAlpha(20),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            icon,
+            size: 16,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: isBold ? 16 : 14,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+              color: isBold ? Colors.black87 : Colors.grey.shade700,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: isBold ? 18 : 14,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+            color: isBold ? color : Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 
@@ -821,7 +1156,7 @@ class _BillsScreenState extends State<BillsScreen> {
       // Hide loading indicator
       navigator.pop();
 
-      // Show success message
+      // Show success dialog
       _showSuccessDialog(pdfFile);
     } catch (e) {
       // Check if widget is still mounted before using context
@@ -833,12 +1168,7 @@ class _BillsScreenState extends State<BillsScreen> {
       }
 
       // Show error message
-      scaffoldMessenger.showSnackBar(
-        SnackBar(
-          content: Text('Error generating PDF: ${e.toString()}'),
-          backgroundColor: Constants.errorColor,
-        ),
-      );
+      _showSnackBar('Error generating PDF: ${e.toString()}', isError: true);
     }
   }
 
@@ -848,12 +1178,28 @@ class _BillsScreenState extends State<BillsScreen> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          content: Row(
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(width: 20),
-              Text(message),
-            ],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          content: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation(Constants.primaryColor),
+                ),
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -865,16 +1211,47 @@ class _BillsScreenState extends State<BillsScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('PDF Generated'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withAlpha(20),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.check_circle_rounded,
+                  color: Color(0xFF10B981),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text('PDF Generated'),
+            ],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Your bill has been successfully converted to PDF.'),
               const SizedBox(height: 16),
-              Text(
-                'File saved to: ${pdfFile.path}',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'File saved to: ${pdfFile.path}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontFamily: 'monospace',
+                  ),
+                ),
               ),
             ],
           ),
@@ -884,29 +1261,6 @@ class _BillsScreenState extends State<BillsScreen> {
                 Navigator.of(context).pop();
               },
               child: const Text('CLOSE'),
-            ),
-            TextButton.icon(
-              onPressed: () async {
-                // Store context before async gap
-                final scaffoldMessenger = ScaffoldMessenger.of(context);
-                Navigator.of(context).pop();
-
-                // Show a success message
-                if (mounted) {
-                  scaffoldMessenger.showSnackBar(
-                    SnackBar(
-                      content: const Text('PDF file saved successfully'),
-                      backgroundColor: Constants.successColor,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.download_done),
-              label: const Text('SAVE'),
-              style: TextButton.styleFrom(
-                foregroundColor: Constants.successColor,
-              ),
             ),
             ElevatedButton.icon(
               onPressed: () async {
@@ -919,20 +1273,18 @@ class _BillsScreenState extends State<BillsScreen> {
                 } catch (e) {
                   // Check if widget is still mounted before using stored scaffoldMessenger
                   if (mounted) {
-                    scaffoldMessenger.showSnackBar(
-                      SnackBar(
-                        content: Text('Error opening PDF: ${e.toString()}'),
-                        backgroundColor: Constants.errorColor,
-                      ),
-                    );
+                    _showSnackBar('Error opening PDF: ${e.toString()}', isError: true);
                   }
                 }
               },
-              icon: const Icon(Icons.visibility, size: 16),
-              label: const Text('VIEW'),
+              icon: const Icon(Icons.visibility_rounded, size: 18),
+              label: const Text('VIEW PDF'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Constants.primaryColor,
                 foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(25),
+                ),
               ),
             ),
           ],
@@ -940,54 +1292,5 @@ class _BillsScreenState extends State<BillsScreen> {
       },
     );
   }
-
-  Widget _buildInfoRow(
-    String label,
-    String value, {
-    bool isBold = false,
-    IconData? icon,
-  }) {
-    // Get screen dimensions for responsive sizing
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 360;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 6 : 8),
-      child: Row(
-        children: [
-          if (icon != null) ...[
-            Icon(
-              icon,
-              size: isSmallScreen ? 14 : 16,
-              color: isBold ? Constants.primaryColor : Colors.grey.shade600,
-            ),
-            SizedBox(width: isSmallScreen ? 6 : 8),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              fontSize:
-                  isBold
-                      ? (isSmallScreen ? 14 : 16)
-                      : (isSmallScreen ? 13 : 14),
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-              color: isBold ? Colors.black : Colors.grey.shade700,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize:
-                  isBold
-                      ? (isSmallScreen ? 16 : 18)
-                      : (isSmallScreen ? 13 : 14),
-              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-              color: isBold ? Constants.primaryColor : Colors.black,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
+

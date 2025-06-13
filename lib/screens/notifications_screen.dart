@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:mytank/providers/notification_provider.dart';
 import 'package:mytank/models/notification_model.dart';
 import 'package:mytank/utilities/constants.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:flutter/services.dart';
 
 // Helper method to replace deprecated withOpacity
 Color withValues(Color color, double opacity) {
@@ -21,24 +23,70 @@ class NotificationsScreen extends StatefulWidget {
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
+class _NotificationsScreenState extends State<NotificationsScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    ));
+    _fadeController.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Constants.backgroundColor,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: Constants.primaryColor,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF667EEA),
+                Constants.primaryColor,
+                Constants.secondaryColor,
+                const Color(0xFF764BA2),
+              ],
+              stops: const [0.0, 0.3, 0.7, 1.0],
+            ),
+          ),
+        ),
         title: const Text(
           'Notifications',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
-            fontSize: 20,
+            fontSize: 22,
+            letterSpacing: 0.5,
           ),
         ),
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.pop(context);
+          },
         ),
         actions: [
           // Real-time connection status indicator
@@ -47,18 +95,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               return Container(
                 margin: const EdgeInsets.only(right: 8),
                 child: Tooltip(
-                  message:
-                      notificationProvider.isSocketConnected
-                          ? 'Real-time notifications active'
-                          : 'Real-time notifications inactive',
+                  message: notificationProvider.isSocketConnected
+                      ? 'Real-time notifications active'
+                      : 'Real-time notifications inactive',
                   child: Icon(
                     notificationProvider.isSocketConnected
                         ? Icons.wifi_rounded
                         : Icons.wifi_off_rounded,
-                    color:
-                        notificationProvider.isSocketConnected
-                            ? Colors.green
-                            : Colors.orange,
+                    color: notificationProvider.isSocketConnected
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFFF59E0B),
                     size: 20,
                   ),
                 ),
@@ -68,8 +114,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           Consumer<NotificationProvider>(
             builder: (context, notificationProvider, child) {
               if (notificationProvider.unreadCount > 0) {
-                return TextButton(
+                return TextButton.icon(
                   onPressed: () {
+                    HapticFeedback.mediumImpact();
                     notificationProvider.markAllAsRead();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -82,7 +129,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                     );
                   },
-                  child: const Text(
+                  icon: const Icon(Icons.done_all_rounded, color: Colors.white),
+                  label: const Text(
                     'Mark All Read',
                     style: TextStyle(
                       color: Colors.white,
@@ -100,7 +148,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: Consumer<NotificationProvider>(
         builder: (context, notificationProvider, child) {
           if (notificationProvider.isLoading) {
-            return _buildLoadingState();
+            return _buildShimmerLoading();
           }
 
           if (notificationProvider.error != null) {
@@ -114,25 +162,73 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             return _buildEmptyState(notificationProvider);
           }
 
-          return _buildNotificationsList(notificationProvider);
+          return FadeTransition(
+            opacity: _fadeAnimation,
+            child: _buildNotificationsList(notificationProvider),
+          );
         },
       ),
     );
   }
 
-  Widget _buildLoadingState() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text(
-            'Loading notifications...',
-            style: TextStyle(fontSize: 16, color: Constants.greyColor),
+  Widget _buildShimmerLoading() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: Colors.grey[300]!,
+          highlightColor: Colors.grey[100]!,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: 100,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -149,29 +245,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Constants.errorColor.withAlpha(20),
+                color: const Color(0xFFEF4444).withAlpha(20),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.error_outline_rounded,
                 size: 64,
-                color: Constants.errorColor,
+                color: Color(0xFFEF4444),
               ),
             ),
             const SizedBox(height: 20),
-            Text(
+            const Text(
               'Failed to Load Notifications',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Constants.primaryColor,
+                color: Color(0xFF1F2937),
               ),
             ),
             const SizedBox(height: 8),
             Text(
               error,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, color: Constants.greyColor),
+              style: const TextStyle(
+                fontSize: 16,
+                color: Color(0xFF6B7280),
+              ),
             ),
             const SizedBox(height: 20),
             Row(
@@ -179,6 +278,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               children: [
                 ElevatedButton.icon(
                   onPressed: () async {
+                    HapticFeedback.mediumImpact();
                     await notificationProvider.fetchNotifications();
                   },
                   icon: const Icon(Icons.refresh_rounded),
@@ -197,11 +297,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(context);
+                  },
                   icon: const Icon(Icons.arrow_back_rounded),
                   label: const Text('Go Back'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Constants.greyColor,
+                    backgroundColor: const Color(0xFF6B7280),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
@@ -252,15 +355,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             const Text(
               'You\'re all caught up! No new notifications at the moment.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Constants.greyColor),
+              style: TextStyle(
+                fontSize: 16,
+                color: Color(0xFF6B7280),
+              ),
             ),
             const SizedBox(height: 20),
-            // Refresh button to check for new notifications
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 ElevatedButton.icon(
                   onPressed: () async {
+                    HapticFeedback.mediumImpact();
                     await notificationProvider.fetchNotifications();
                   },
                   icon: const Icon(Icons.refresh_rounded),
@@ -277,69 +383,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                // Test button for adding notifications (development only)
-                ElevatedButton.icon(
-                  onPressed: () {
-                    notificationProvider.addTestNotification();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Test notification added'),
-                        backgroundColor: Constants.primaryColor,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.add_alert_rounded),
-                  label: const Text('Add Test'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Constants.secondaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                  ),
-                ),
               ],
-            ),
-            const SizedBox(height: 12),
-            // Test button for server format (development only)
-            ElevatedButton.icon(
-              onPressed: () {
-                notificationProvider.addTestNotificationWithServerFormat();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text(
-                      'Server format test notification added',
-                    ),
-                    backgroundColor: Constants.warningColor,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.cloud_download_rounded),
-              label: const Text('Test Server Format'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Constants.warningColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
-              ),
             ),
           ],
         ),
@@ -350,7 +394,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _buildNotificationsList(NotificationProvider notificationProvider) {
     return RefreshIndicator(
       onRefresh: () async {
-        // Fetch fresh notifications from the API
+        HapticFeedback.mediumImpact();
         await notificationProvider.fetchNotifications();
       },
       child: ListView.builder(
@@ -380,16 +424,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             offset: const Offset(0, 2),
           ),
         ],
-        border:
-            notification.isRead
-                ? null
-                : Border.all(
-                  color: Constants.primaryColor.withAlpha(50),
-                  width: 1,
-                ),
+        border: notification.isRead
+            ? null
+            : Border.all(
+                color: Constants.primaryColor.withAlpha(50),
+                width: 1,
+              ),
       ),
       child: InkWell(
         onTap: () {
+          HapticFeedback.lightImpact();
           if (!notification.isRead) {
             notificationProvider.markAsRead(notification.id);
           }
@@ -404,18 +448,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color:
-                      notification.isRead
-                          ? Constants.greyColor.withAlpha(20)
-                          : Constants.primaryColor.withAlpha(20),
+                  color: notification.isRead
+                      ? const Color(0xFF6B7280).withAlpha(20)
+                      : Constants.primaryColor.withAlpha(20),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   Icons.water_drop_rounded,
-                  color:
-                      notification.isRead
-                          ? Constants.greyColor
-                          : Constants.primaryColor,
+                  color: notification.isRead
+                      ? const Color(0xFF6B7280)
+                      : Constants.primaryColor,
                   size: 20,
                 ),
               ),
@@ -430,14 +472,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       notification.message,
                       style: TextStyle(
                         fontSize: 15,
-                        fontWeight:
-                            notification.isRead
-                                ? FontWeight.normal
-                                : FontWeight.w600,
-                        color:
-                            notification.isRead
-                                ? Constants.greyColor
-                                : Constants.blackColor,
+                        fontWeight: notification.isRead
+                            ? FontWeight.normal
+                            : FontWeight.w600,
+                        color: notification.isRead
+                            ? const Color(0xFF6B7280)
+                            : const Color(0xFF1F2937),
                         height: 1.4,
                       ),
                     ),
@@ -447,9 +487,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       children: [
                         Text(
                           notification.getFormattedDate(),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 13,
-                            color: Constants.greyColor,
+                            color: Color(0xFF6B7280),
                           ),
                         ),
                         if (!notification.isRead) ...[
@@ -457,8 +497,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           Container(
                             width: 8,
                             height: 8,
-                            decoration: BoxDecoration(
-                              color: Constants.primaryColor,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFEF4444),
                               shape: BoxShape.circle,
                             ),
                           ),

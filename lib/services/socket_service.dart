@@ -29,9 +29,12 @@ class SocketService {
   /// Initialize and connect to the Socket.IO server
   Future<void> connect(String userId, String token) async {
     try {
-      debugPrint('🔌 Initializing Socket.IO connection...');
+      debugPrint('🔌 ========================================');
+      debugPrint('🔌 SOCKET.IO CONNECTION ATTEMPT');
+      debugPrint('🔌 ========================================');
       debugPrint('🔌 Server URL: ${Constants.socketUrl}');
       debugPrint('🔌 User ID: $userId');
+      debugPrint('🔌 Token length: ${token.length} characters');
 
       _userId = userId;
 
@@ -123,6 +126,7 @@ class SocketService {
       try {
         // Parse the incoming data structure
         // Expected format: { "userId": "...", "notification": { ... } }
+        // Only process notifications intended for the current user
         if (data is Map<String, dynamic>) {
           final String? receivedUserId = data['userId']?.toString();
           final Map<String, dynamic>? notificationData =
@@ -132,19 +136,24 @@ class SocketService {
           debugPrint('🔍 Current userId: $_userId');
           debugPrint('🔍 Notification data: $notificationData');
 
-          // Check if this notification is for the current user
-          if (receivedUserId == _userId && notificationData != null) {
+          // Enhanced user ID validation and comparison
+          if (_isUserIdValid(receivedUserId) && notificationData != null) {
             // Create NotificationModel from received data
             final notification = NotificationModel.fromJson(notificationData);
             debugPrint('✅ Parsed notification: ${notification.message}');
             debugPrint('✅ Notification ID: ${notification.id}');
             debugPrint('✅ Created at: ${notification.createdAt}');
 
-            // Trigger callback to update UI
-            onNewNotification?.call(notification);
-          } else if (receivedUserId != _userId) {
+            // Trigger callback to update UI IMMEDIATELY
+            if (onNewNotification != null) {
+              onNewNotification!(notification);
+              debugPrint('✅ Notification callback triggered successfully');
+            } else {
+              debugPrint('⚠️ No notification callback registered');
+            }
+          } else if (!_isUserIdValid(receivedUserId)) {
             debugPrint(
-              'ℹ️ Notification not for current user ($receivedUserId != $_userId)',
+              'ℹ️ Notification not for current user (received: "$receivedUserId", current: "$_userId")',
             );
           } else {
             debugPrint('❌ Notification data is null or invalid');
@@ -195,6 +204,34 @@ class SocketService {
     } else {
       debugPrint('❌ Cannot emit event: Socket not connected');
     }
+  }
+
+  /// Enhanced user ID validation with multiple checks
+  bool _isUserIdValid(String? receivedUserId) {
+    // Check if both user IDs exist and are not empty
+    if (_userId == null || _userId!.isEmpty) {
+      debugPrint('❌ Current user ID is null or empty');
+      return false;
+    }
+
+    if (receivedUserId == null || receivedUserId.isEmpty) {
+      debugPrint('❌ Received user ID is null or empty');
+      return false;
+    }
+
+    // Trim whitespace and compare (case-sensitive for security)
+    final currentUserId = _userId!.trim();
+    final incomingUserId = receivedUserId.trim();
+
+    final isMatch = currentUserId == incomingUserId;
+    
+    if (isMatch) {
+      debugPrint('✅ User ID match confirmed: $currentUserId');
+    } else {
+      debugPrint('❌ User ID mismatch: "$incomingUserId" != "$currentUserId"');
+    }
+
+    return isMatch;
   }
 
   /// Check connection status
