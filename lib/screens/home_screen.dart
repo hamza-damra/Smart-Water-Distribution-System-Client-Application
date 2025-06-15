@@ -38,14 +38,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late AnimationController _slideController;
   late AnimationController _scaleController;
-  
+
   late Animation<double> _pulseAnimation;
   late Animation<double> _bounceAnimation;
   late Animation<double> _rotationAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _scaleAnimation;
-  
+
   User? _currentUser;
   bool _isLoadingUser = false;
   int _previousUnreadCount = 0;
@@ -55,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _initializeAnimations();
-    
+
     // Fetch main tank data and user data when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchMainTankData();
@@ -90,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-    
+
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
@@ -116,42 +116,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
 
-    _rotationAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _rotationController,
-      curve: Curves.linear,
-    ));
+    _rotationAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _rotationController, curve: Curves.linear),
+    );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(
+      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+    );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _scaleController,
-      curve: Curves.elasticOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
+    );
 
     // Start animations
     _notificationPulseController.repeat(reverse: true);
     _rotationController.repeat();
-    
+
     // Start entrance animations after a short delay
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
@@ -200,12 +187,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
         // Initialize real-time notifications with user ID from fetched data
         authProvider.updateUserInfo(user.name);
-        
+
         // Set user ID in auth provider if not already set
         if (authProvider.userId == null) {
           authProvider.updateUserId(user.id);
         }
-        
+
         authProvider.initializeRealTimeNotifications(context);
 
         // Start periodic notification refresh (every 30 seconds)
@@ -230,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           context,
           listen: false,
         );
-        
+
         // Only refresh if socket is not connected (as backup)
         if (!notificationProvider.isSocketConnected) {
           debugPrint('🔄 Periodic notification refresh (socket disconnected)');
@@ -267,6 +254,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _handleLogout(BuildContext context) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final navigator = Navigator.of(context);
+
+    // The AuthProvider.logoutWithContext will handle clearing all provider data
     await authProvider.logoutWithContext(context);
     if (mounted) {
       navigator.pushReplacementNamed(RouteManager.loginRoute);
@@ -333,7 +322,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       // Enhanced Modern Navigation Drawer with Fixed UX
       drawer: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.85, // Fixed width for better UX
+        width:
+            MediaQuery.of(context).size.width *
+            0.85, // Fixed width for better UX
         child: Drawer(
           backgroundColor: const Color(0xFFF8FAFC),
           shape: const RoundedRectangleBorder(
@@ -361,10 +352,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   width: double.infinity,
                   padding: EdgeInsets.fromLTRB(
-                    16, 
-                    MediaQuery.of(context).padding.top + 12, // Reduced padding for better space usage
-                    16, 
-                    16
+                    16,
+                    MediaQuery.of(context).padding.top +
+                        12, // Reduced padding for better space usage
+                    16,
+                    16,
                   ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -390,8 +382,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ],
                   ),
                   child: SafeArea(
-                    top: false, // Don't add safe area padding at top since we handle it manually
-                    child: _isLoadingUser ? _buildLoadingHeader() : _buildEnhancedUserHeader(),
+                    top:
+                        false, // Don't add safe area padding at top since we handle it manually
+                    child:
+                        _isLoadingUser
+                            ? _buildLoadingHeader()
+                            : _buildEnhancedUserHeader(),
                   ),
                 ),
 
@@ -409,25 +405,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           title: 'Home',
                           isActive: true,
                           color: Constants.primaryColor,
-                          onTap: () => _navigateFromDrawer(context, RouteManager.homeRoute),
+                          onTap:
+                              () => _navigateFromDrawer(
+                                context,
+                                RouteManager.homeRoute,
+                              ),
                         ),
                         _buildEnhancedDrawerItem(
                           icon: Icons.water_rounded,
                           title: 'My Tanks',
                           color: const Color(0xFF3B82F6),
-                          onTap: () => _navigateFromDrawer(context, RouteManager.tanksRoute),
+                          onTap:
+                              () => _navigateFromDrawer(
+                                context,
+                                RouteManager.tanksRoute,
+                              ),
                         ),
                         _buildEnhancedDrawerItem(
                           icon: Icons.person_rounded,
                           title: 'Profile',
                           color: const Color(0xFF9C27B0),
-                          onTap: () => _navigateFromDrawer(context, RouteManager.profileRoute),
+                          onTap:
+                              () => _navigateFromDrawer(
+                                context,
+                                RouteManager.profileRoute,
+                              ),
                         ),
                         _buildEnhancedDrawerItem(
                           icon: Icons.receipt_rounded,
                           title: 'My Bills',
                           color: const Color(0xFF10B981),
-                          onTap: () => _navigateFromDrawer(context, RouteManager.billsRoute),
+                          onTap:
+                              () => _navigateFromDrawer(
+                                context,
+                                RouteManager.billsRoute,
+                              ),
                         ),
                         Consumer<NotificationProvider>(
                           builder: (context, notificationProvider, child) {
@@ -435,10 +447,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               icon: Icons.notifications_rounded,
                               title: 'Notifications',
                               color: const Color(0xFFEF4444),
-                              badge: notificationProvider.unreadCount > 0
-                                  ? notificationProvider.unreadCount
-                                  : null,
-                              onTap: () => _navigateFromDrawer(context, RouteManager.notificationsRoute),
+                              badge:
+                                  notificationProvider.unreadCount > 0
+                                      ? notificationProvider.unreadCount
+                                      : null,
+                              onTap:
+                                  () => _navigateFromDrawer(
+                                    context,
+                                    RouteManager.notificationsRoute,
+                                  ),
                             );
                           },
                         ),
@@ -451,16 +468,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           icon: Icons.help_outline_rounded,
                           title: 'Help & Support',
                           color: Colors.grey.shade600,
-                          onTap: () => _handleDrawerAction(context, () {
-                            // Navigate to help when implemented
-                            _showSnackBar('Help & Support coming soon!');
-                          }),
+                          onTap:
+                              () => _handleDrawerAction(context, () {
+                                // Navigate to help when implemented
+                                _showSnackBar('Help & Support coming soon!');
+                              }),
                         ),
                         _buildEnhancedDrawerItem(
                           icon: Icons.info_outline_rounded,
                           title: 'About Us',
                           color: Colors.grey.shade600,
-                          onTap: () => _navigateFromDrawer(context, RouteManager.aboutUsRoute),
+                          onTap:
+                              () => _navigateFromDrawer(
+                                context,
+                                RouteManager.aboutUsRoute,
+                              ),
                         ),
 
                         const SizedBox(height: 20),
@@ -471,11 +493,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           icon: Icons.logout_rounded,
                           title: 'Logout',
                           color: const Color(0xFFEF4444),
-                          onTap: () => _handleDrawerAction(context, () {
-                            _handleLogout(context);
-                          }, isDestructive: true),
+                          onTap:
+                              () => _handleDrawerAction(context, () {
+                                _handleLogout(context);
+                              }, isDestructive: true),
                         ),
-                        
+
                         const SizedBox(height: 20),
                       ],
                     ),
@@ -512,77 +535,187 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ],
                   ),
-              child: SafeArea(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Welcome header with shimmer loading
-                    ScaleTransition(
-                      scale: _scaleAnimation,
-                      child: _isLoadingUser ? 
-                        // Shimmer loading state for welcome header
-                        Shimmer.fromColors(
-                          baseColor: Colors.grey.shade300,
-                          highlightColor: Colors.grey.shade100,
-                          child: Row(
-                            children: [
-                              Container(
-                                height: 70,
-                                width: 70,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                              ),
-                              const SizedBox(width: 18),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      height: 16,
-                                      width: 120,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
+                  child: SafeArea(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Welcome header with shimmer loading
+                        ScaleTransition(
+                          scale: _scaleAnimation,
+                          child:
+                              _isLoadingUser
+                                  ?
+                                  // Shimmer loading state for welcome header
+                                  Shimmer.fromColors(
+                                    baseColor: Colors.grey.shade300,
+                                    highlightColor: Colors.grey.shade100,
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          height: 70,
+                                          width: 70,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 18),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Container(
+                                                height: 16,
+                                                width: 120,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Container(
+                                                height: 26,
+                                                width: 200,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Container(
+                                                height: 20,
+                                                width: 140,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 8),
-                                    Container(
-                                      height: 26,
-                                      width: 200,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(8),
+                                  )
+                                  :
+                                  // Actual welcome header
+                                  Row(
+                                    children: [
+                                      // Enhanced Avatar container with pulse effect
+                                      AnimatedBuilder(
+                                        animation: _pulseAnimation,
+                                        builder: (context, child) {
+                                          return Transform.scale(
+                                            scale:
+                                                0.95 +
+                                                (_pulseAnimation.value * 0.05),
+                                            child: Container(
+                                              height: 70,
+                                              width: 70,
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                  colors: [
+                                                    const Color(0xFF667EEA),
+                                                    Constants.primaryColor,
+                                                    Constants.secondaryColor,
+                                                  ],
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: withValues(
+                                                      Constants.primaryColor,
+                                                      0.3,
+                                                    ),
+                                                    blurRadius: 15,
+                                                    offset: const Offset(0, 6),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: const Icon(
+                                                Icons.water_drop_rounded,
+                                                size: 40,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          );
+                                        },
                                       ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Container(
-                                      height: 20,
-                                      width: 140,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(10),
+                                      const SizedBox(width: 18),
+                                      // Welcome text with enhanced styling
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Welcome back',
+                                              style: TextStyle(
+                                                color: Constants.greyColor,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w500,
+                                                letterSpacing: 0.2,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              userName,
+                                              style: TextStyle(
+                                                color: Constants.primaryColor,
+                                                fontSize: 26,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 4,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: const Color(
+                                                  0xFF10B981,
+                                                ).withAlpha(20),
+                                                borderRadius:
+                                                    BorderRadius.circular(15),
+                                              ),
+                                              child: const Text(
+                                                '🌊 Water Guardian',
+                                                style: TextStyle(
+                                                  color: Color(0xFF10B981),
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ) :
-                        // Actual welcome header
-                        Row(
-                          children: [
-                            // Enhanced Avatar container with pulse effect
-                            AnimatedBuilder(
-                              animation: _pulseAnimation,
+                                    ],
+                                  ),
+                        ),
+
+                        // Enhanced water usage card with shimmer loading
+                        Consumer<MainTankProvider>(
+                          builder: (context, mainTankProvider, child) {
+                            return AnimatedBuilder(
+                              animation: _scaleAnimation,
                               builder: (context, child) {
                                 return Transform.scale(
-                                  scale: 0.95 + (_pulseAnimation.value * 0.05),
+                                  scale: _scaleAnimation.value,
                                   child: Container(
-                                    height: 70,
-                                    width: 70,
+                                    margin: const EdgeInsets.only(top: 24),
+                                    padding: const EdgeInsets.all(22),
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         begin: Alignment.topLeft,
@@ -591,251 +724,221 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           const Color(0xFF667EEA),
                                           Constants.primaryColor,
                                           Constants.secondaryColor,
+                                          const Color(0xFF764BA2),
                                         ],
+                                        stops: const [0.0, 0.3, 0.7, 1.0],
                                       ),
-                                      borderRadius: BorderRadius.circular(20),
+                                      borderRadius: BorderRadius.circular(25),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: withValues(Constants.primaryColor, 0.3),
-                                          blurRadius: 15,
-                                          offset: const Offset(0, 6),
+                                          color: withValues(
+                                            Constants.primaryColor,
+                                            0.3,
+                                          ),
+                                          blurRadius: 20,
+                                          offset: const Offset(0, 10),
                                         ),
                                       ],
                                     ),
-                                    child: const Icon(
-                                      Icons.water_drop_rounded,
-                                      size: 40,
-                                      color: Colors.white,
-                                    ),
+                                    child:
+                                        mainTankProvider.isLoading
+                                            ?
+                                            // Shimmer loading state
+                                            Shimmer.fromColors(
+                                              baseColor: Colors.white.withAlpha(
+                                                60,
+                                              ),
+                                              highlightColor: Colors.white
+                                                  .withAlpha(120),
+                                              child: Row(
+                                                children: [
+                                                  Container(
+                                                    width: 56,
+                                                    height: 56,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            16,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 18),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Container(
+                                                          height: 16,
+                                                          width:
+                                                              double.infinity,
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.white,
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  8,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 8,
+                                                        ),
+                                                        Container(
+                                                          height: 28,
+                                                          width: 120,
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.white,
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  8,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  Container(
+                                                    width: 80,
+                                                    height: 40,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            20,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            )
+                                            :
+                                            // Actual content
+                                            Row(
+                                              children: [
+                                                // Enhanced water icon with glow effect
+                                                Container(
+                                                  padding: const EdgeInsets.all(
+                                                    14,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: withValues(
+                                                      Colors.white,
+                                                      0.25,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          16,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: withValues(
+                                                        Colors.white,
+                                                        0.3,
+                                                      ),
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.waves_rounded,
+                                                    color: Colors.white,
+                                                    size: 28,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 18),
+                                                // Enhanced usage stats
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      const Text(
+                                                        'This Month\'s Usage',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          letterSpacing: 0.3,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 6),
+                                                      Text(
+                                                        mainTankProvider
+                                                            .formatUsage(
+                                                              mainTankProvider
+                                                                  .currentMonthUsage,
+                                                            ),
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 28,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          letterSpacing: 0.5,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                // Enhanced status pill with real data
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 10,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color:
+                                                        mainTankProvider
+                                                            .usageStatusColor,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          25,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: Colors.white
+                                                          .withAlpha(100),
+                                                      width: 1,
+                                                    ),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: withValues(
+                                                          Colors.black,
+                                                          0.15,
+                                                        ),
+                                                        blurRadius: 8,
+                                                        offset: const Offset(
+                                                          0,
+                                                          4,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Text(
+                                                    mainTankProvider
+                                                        .usageStatus,
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 14,
+                                                      letterSpacing: 0.2,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                   ),
                                 );
                               },
-                            ),
-                            const SizedBox(width: 18),
-                            // Welcome text with enhanced styling
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Welcome back',
-                                    style: TextStyle(
-                                      color: Constants.greyColor,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      letterSpacing: 0.2,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    userName,
-                                    style: TextStyle(
-                                      color: Constants.primaryColor,
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF10B981).withAlpha(20),
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                    child: const Text(
-                                      '🌊 Water Guardian',
-                                      style: TextStyle(
-                                        color: Color(0xFF10B981),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                    ),
-
-                    // Enhanced water usage card with shimmer loading
-                    Consumer<MainTankProvider>(
-                      builder: (context, mainTankProvider, child) {
-                        return AnimatedBuilder(
-                          animation: _scaleAnimation,
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: _scaleAnimation.value,
-                              child: Container(
-                                margin: const EdgeInsets.only(top: 24),
-                                padding: const EdgeInsets.all(22),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      const Color(0xFF667EEA),
-                                      Constants.primaryColor,
-                                      Constants.secondaryColor,
-                                      const Color(0xFF764BA2),
-                                    ],
-                                    stops: const [0.0, 0.3, 0.7, 1.0],
-                                  ),
-                                  borderRadius: BorderRadius.circular(25),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: withValues(Constants.primaryColor, 0.3),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 10),
-                                    ),
-                                  ],
-                                ),
-                                child: mainTankProvider.isLoading ? 
-                                  // Shimmer loading state
-                                  Shimmer.fromColors(
-                                    baseColor: Colors.white.withAlpha(60),
-                                    highlightColor: Colors.white.withAlpha(120),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 56,
-                                          height: 56,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(16),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 18),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Container(
-                                                height: 16,
-                                                width: double.infinity,
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white,
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Container(
-                                                height: 28,
-                                                width: 120,
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white,
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Container(
-                                          width: 80,
-                                          height: 40,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(20),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ) :
-                                  // Actual content
-                                  Row(
-                                    children: [
-                                      // Enhanced water icon with glow effect
-                                      Container(
-                                        padding: const EdgeInsets.all(14),
-                                        decoration: BoxDecoration(
-                                          color: withValues(Colors.white, 0.25),
-                                          borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(
-                                            color: withValues(Colors.white, 0.3),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.waves_rounded,
-                                          color: Colors.white,
-                                          size: 28,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 18),
-                                      // Enhanced usage stats
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'This Month\'s Usage',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w500,
-                                                letterSpacing: 0.3,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 6),
-                                            Text(
-                                              mainTankProvider.formatUsage(mainTankProvider.currentMonthUsage),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 28,
-                                                fontWeight: FontWeight.bold,
-                                                letterSpacing: 0.5,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      // Enhanced status pill with real data
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 10,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: mainTankProvider.usageStatusColor,
-                                          borderRadius: BorderRadius.circular(25),
-                                          border: Border.all(
-                                            color: Colors.white.withAlpha(100),
-                                            width: 1,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: withValues(Colors.black, 0.15),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Text(
-                                          mainTankProvider.usageStatus,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                            letterSpacing: 0.2,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                              ),
                             );
                           },
-                        );
-                      },
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
 
                 // Main content with enhanced modern design
                 Padding(
@@ -871,7 +974,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       baseColor: Colors.grey.shade300,
                                       highlightColor: Colors.grey.shade100,
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Row(
                                             children: [
@@ -880,20 +984,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 height: 52,
                                                 decoration: BoxDecoration(
                                                   color: Colors.white,
-                                                  borderRadius: BorderRadius.circular(16),
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
                                                 ),
                                               ),
                                               const SizedBox(width: 16),
                                               Expanded(
                                                 child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     Container(
                                                       height: 18,
                                                       width: double.infinity,
                                                       decoration: BoxDecoration(
                                                         color: Colors.white,
-                                                        borderRadius: BorderRadius.circular(9),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              9,
+                                                            ),
                                                       ),
                                                     ),
                                                     const SizedBox(height: 8),
@@ -902,7 +1011,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                       width: 200,
                                                       decoration: BoxDecoration(
                                                         color: Colors.white,
-                                                        borderRadius: BorderRadius.circular(7),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              7,
+                                                            ),
                                                       ),
                                                     ),
                                                   ],
@@ -912,18 +1024,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           ),
                                           const SizedBox(height: 24),
                                           Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
                                             children: [
                                               Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
                                                   Container(
                                                     height: 16,
                                                     width: 120,
                                                     decoration: BoxDecoration(
                                                       color: Colors.white,
-                                                      borderRadius: BorderRadius.circular(8),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
                                                     ),
                                                   ),
                                                   const SizedBox(height: 8),
@@ -932,7 +1050,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     width: 100,
                                                     decoration: BoxDecoration(
                                                       color: Colors.white,
-                                                      borderRadius: BorderRadius.circular(8),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
                                                     ),
                                                   ),
                                                 ],
@@ -942,7 +1063,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 height: 42,
                                                 decoration: BoxDecoration(
                                                   color: Colors.white,
-                                                  borderRadius: BorderRadius.circular(21),
+                                                  borderRadius:
+                                                      BorderRadius.circular(21),
                                                 ),
                                               ),
                                             ],
@@ -954,7 +1076,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             width: double.infinity,
                                             decoration: BoxDecoration(
                                               color: Colors.white,
-                                              borderRadius: BorderRadius.circular(16),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
                                             ),
                                           ),
                                           const SizedBox(height: 32),
@@ -965,7 +1088,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               height: 48,
                                               decoration: BoxDecoration(
                                                 color: Colors.white,
-                                                borderRadius: BorderRadius.circular(24),
+                                                borderRadius:
+                                                    BorderRadius.circular(24),
                                               ),
                                             ),
                                           ),
@@ -974,20 +1098,50 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     );
                                   }
 
-                                  final waterLevel = mainTankProvider.waterLevelPercentage;
-                                  final statusText = mainTankProvider.statusText;
-                                  final statusColor = mainTankProvider.statusColor;
+                                  // Check if user has no tank data (not an error)
+                                  if (mainTankProvider.hasNoTankData) {
+                                    return _buildNoTankDataState();
+                                  }
+
+                                  // Check if there's an actual error
+                                  if (mainTankProvider.hasError) {
+                                    return _buildErrorState(
+                                      mainTankProvider.errorMessage!,
+                                    );
+                                  }
+
+                                  final waterLevel =
+                                      mainTankProvider.waterLevelPercentage;
+
+                                  // Calculate water level and capacity values
+                                  double currentLevelLiters =
+                                      mainTankProvider.mainTank?.currentLevel ??
+                                      0.0;
+                                  double maxCapacityLiters =
+                                      mainTankProvider.mainTank?.maxCapacity ??
+                                      1.0;
+
+                                  // Calculate level color based on water level
+                                  Color levelColor =
+                                      waterLevel < 0.3
+                                          ? const Color(0xFFEF4444)
+                                          : waterLevel < 0.6
+                                          ? const Color(0xFFF59E0B)
+                                          : const Color(0xFF10B981);
 
                                   return Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
                                           Container(
                                             padding: const EdgeInsets.all(12),
                                             decoration: BoxDecoration(
-                                              color: Constants.primaryColor.withAlpha(20),
-                                              borderRadius: BorderRadius.circular(16),
+                                              color: Constants.primaryColor
+                                                  .withAlpha(20),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
                                             ),
                                             child: Icon(
                                               Icons.water_rounded,
@@ -998,7 +1152,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           const SizedBox(width: 16),
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   'Smart Tank Monitor',
@@ -1023,73 +1178,80 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         ],
                                       ),
                                       const SizedBox(height: 24),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment: CrossAxisAlignment.end,
-                                        children: [
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'Current Level',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  color: Constants.greyColor,
-                                                  fontWeight: FontWeight.w500,
-                                                  letterSpacing: 0.2,
-                                                ),
+
+                                      // Enhanced water level display from tanks screen
+                                      Padding(
+                                        padding: const EdgeInsets.all(24),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color: levelColor.withAlpha(20),
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
                                               ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                '${(waterLevel * 100).toInt()}%',
-                                                style: TextStyle(
-                                                  fontSize: 52,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Constants.primaryColor,
-                                                  letterSpacing: -1,
-                                                ),
+                                              child: Icon(
+                                                Icons.water_drop,
+                                                color: levelColor,
+                                                size: 28,
                                               ),
-                                            ],
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 18,
-                                              vertical: 12,
                                             ),
-                                            decoration: BoxDecoration(
-                                              color: statusColor,
-                                              borderRadius: BorderRadius.circular(25),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: statusColor.withAlpha(100),
-                                                  blurRadius: 8,
-                                                  offset: const Offset(0, 4),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  Icons.insights_rounded,
-                                                  color: Colors.white,
-                                                  size: 18,
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Text(
-                                                  statusText,
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 14,
-                                                    letterSpacing: 0.2,
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text(
+                                                    'Water Level',
+                                                    style: TextStyle(
+                                                      fontSize: 18,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Colors.black87,
+                                                    ),
                                                   ),
-                                                ),
-                                              ],
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    '${currentLevelLiters.toStringAsFixed(1)} L / ${maxCapacityLiters.toStringAsFixed(1)} L',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color:
+                                                          Colors.grey.shade600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 10,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: levelColor.withAlpha(20),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                border: Border.all(
+                                                  color: levelColor.withAlpha(
+                                                    100,
+                                                  ),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                "${(waterLevel * 100).toStringAsFixed(1)}%",
+                                                style: TextStyle(
+                                                  color: levelColor,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                       const SizedBox(height: 24),
 
@@ -1097,10 +1259,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       WaterTank3D(
                                         waterLevel: waterLevel,
                                         maxCapacity:
-                                            mainTankProvider.mainTank?.maxCapacity ??
+                                            mainTankProvider
+                                                .mainTank
+                                                ?.maxCapacity ??
                                             1.0,
                                         currentLevel:
-                                            mainTankProvider.mainTank?.currentLevel ??
+                                            mainTankProvider
+                                                .mainTank
+                                                ?.currentLevel ??
                                             0.0,
                                       ),
 
@@ -1132,7 +1298,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                           >(Colors.white),
                                                     ),
                                                   )
-                                                  : const Icon(Icons.refresh_rounded),
+                                                  : const Icon(
+                                                    Icons.refresh_rounded,
+                                                  ),
                                           label: Text(
                                             (mainTankProvider.isLoading ||
                                                     _isLoadingUser)
@@ -1144,14 +1312,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             ),
                                           ),
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Constants.primaryColor,
+                                            backgroundColor:
+                                                Constants.primaryColor,
                                             foregroundColor: Colors.white,
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 28,
                                               vertical: 14,
                                             ),
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(25),
+                                              borderRadius:
+                                                  BorderRadius.circular(25),
                                             ),
                                             elevation: 4,
                                           ),
@@ -1169,7 +1339,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           ),
                                           decoration: BoxDecoration(
                                             color: Colors.grey.shade100,
-                                            borderRadius: BorderRadius.circular(15),
+                                            borderRadius: BorderRadius.circular(
+                                              15,
+                                            ),
                                           ),
                                           child: Text(
                                             '🕒 Last updated: Just now',
@@ -1347,18 +1519,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      color.withAlpha(30),
-                      color.withAlpha(10),
-                    ],
+                    colors: [color.withAlpha(30), color.withAlpha(10)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: color.withAlpha(50),
-                    width: 1,
-                  ),
+                  border: Border.all(color: color.withAlpha(50), width: 1),
                 ),
                 child: Icon(icon, color: color, size: 32),
               ),
@@ -1380,46 +1546,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-
-
-  // Helper method to build default avatar
-  Widget _buildDefaultAvatar() {
-    final user = _currentUser;
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final displayName = user?.name ?? authProvider.userName ?? 'User';
-    final initials = _getInitials(displayName);
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Constants.primaryColor.withAlpha(200),
-            Constants.secondaryColor.withAlpha(200),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Center(
-        child: Text(
-          initials,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
   // Helper method to build responsive loading header with shimmer
   Widget _buildLoadingHeader() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final hasSpace = constraints.maxHeight > 140;
-        
+
         return Shimmer.fromColors(
           baseColor: Colors.white.withAlpha(30),
           highlightColor: Colors.white.withAlpha(80),
@@ -1468,7 +1600,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ],
               ),
-              
+
               if (hasSpace) ...[
                 const SizedBox(height: 16),
                 // Loading placeholders for user info (only if space available)
@@ -1528,9 +1660,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (context, constraints) {
         // Determine if we have enough space for full content
         final hasSpace = constraints.maxHeight > 140;
-        
+
         return Column(
-          mainAxisSize: MainAxisSize.min, // Important: Don't take more space than needed
+          mainAxisSize:
+              MainAxisSize.min, // Important: Don't take more space than needed
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Enhanced profile section with responsive sizing
@@ -1585,29 +1718,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                         ],
                       ),
-                      child: user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(hasSpace ? 16 : 13),
-                              child: Image.network(
-                                user.avatarUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return _buildEnhancedDefaultAvatar();
-                                },
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Center(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Constants.primaryColor,
+                      child:
+                          user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
+                              ? ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                  hasSpace ? 16 : 13,
+                                ),
+                                child: Image.network(
+                                  user.avatarUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return _buildEnhancedDefaultAvatar();
+                                  },
+                                  loadingBuilder: (
+                                    context,
+                                    child,
+                                    loadingProgress,
+                                  ) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Constants.primaryColor,
+                                            ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            )
-                          : _buildEnhancedDefaultAvatar(),
+                                    );
+                                  },
+                                ),
+                              )
+                              : _buildEnhancedDefaultAvatar(),
                     ),
                   ],
                 ),
@@ -1690,12 +1831,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ],
             ),
-            
+
             // Add app branding section to fill space when available
             if (hasSpace) ...[
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withAlpha(15),
                   borderRadius: BorderRadius.circular(20),
@@ -1743,7 +1887,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (context, constraints) {
         // Determine size based on container constraints
         final isLarge = constraints.maxWidth > 55;
-        
+
         return Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -1793,27 +1937,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           splashColor: color.withAlpha(30),
           highlightColor: color.withAlpha(20),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16), // Larger touch target
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ), // Larger touch target
             decoration: BoxDecoration(
-              color: isActive 
-                  ? color.withAlpha(20)
-                  : Colors.transparent,
+              color: isActive ? color.withAlpha(20) : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
-              border: isActive
-                  ? Border.all(
-                      color: color.withAlpha(100),
-                      width: 1,
-                    )
-                  : null,
+              border:
+                  isActive
+                      ? Border.all(color: color.withAlpha(100), width: 1)
+                      : null,
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(12), // Larger icon container
                   decoration: BoxDecoration(
-                    color: isActive 
-                        ? color.withAlpha(30)
-                        : color.withAlpha(15),
+                    color: isActive ? color.withAlpha(30) : color.withAlpha(15),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: color.withAlpha(isActive ? 100 : 50),
@@ -1840,8 +1981,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 if (badge != null && badge > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 20,
+                      minHeight: 20,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEF4444),
                       borderRadius: BorderRadius.circular(12),
@@ -1881,14 +2028,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // Helper method for drawer actions with proper feedback
-  void _handleDrawerAction(BuildContext context, VoidCallback action, {bool isDestructive = false}) {
+  void _handleDrawerAction(
+    BuildContext context,
+    VoidCallback action, {
+    bool isDestructive = false,
+  }) {
     if (isDestructive) {
       HapticFeedback.mediumImpact();
     } else {
       HapticFeedback.lightImpact();
     }
     Navigator.pop(context); // Close drawer first
-    
+
     // Add delay for smooth drawer closing
     Future.delayed(const Duration(milliseconds: 250), () {
       if (mounted) {
@@ -1917,7 +2068,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // Helper method to show snackbar messages
   void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -1927,13 +2078,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             fontWeight: FontWeight.w500,
           ),
         ),
-        backgroundColor: isError 
-            ? const Color(0xFFEF4444)
-            : Constants.primaryColor,
+        backgroundColor:
+            isError ? const Color(0xFFEF4444) : Constants.primaryColor,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
         duration: const Duration(seconds: 2),
       ),
@@ -1946,9 +2094,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       animation: Listenable.merge([_pulseAnimation, _bounceAnimation]),
       builder: (context, child) {
         return Transform.scale(
-          scale: unreadCount > 0
-              ? _pulseAnimation.value * _bounceAnimation.value
-              : 1.0,
+          scale:
+              unreadCount > 0
+                  ? _pulseAnimation.value * _bounceAnimation.value
+                  : 1.0,
           child: Container(
             margin: const EdgeInsets.all(2),
             child: Stack(
@@ -1960,9 +2109,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   child: Tooltip(
-                    message: unreadCount > 0
-                        ? '$unreadCount unread notification${unreadCount == 1 ? '' : 's'}'
-                        : 'Notifications',
+                    message:
+                        unreadCount > 0
+                            ? '$unreadCount unread notification${unreadCount == 1 ? '' : 's'}'
+                            : 'Notifications',
                     preferBelow: false,
                     margin: const EdgeInsets.symmetric(horizontal: 20),
                     decoration: BoxDecoration(
@@ -1996,7 +2146,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
-                
+
                 // Simple notification counter positioned closer to icon
                 if (unreadCount > 0)
                   Positioned(
@@ -2010,10 +2160,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       decoration: BoxDecoration(
                         color: const Color(0xFFFF5722), // Simple solid color
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 1,
-                        ),
+                        border: Border.all(color: Colors.white, width: 1),
                       ),
                       constraints: const BoxConstraints(
                         minWidth: 14,
@@ -2036,6 +2183,241 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         );
       },
+    );
+  }
+
+  // Build empty state when user has no tank data
+  Widget _buildNoTankDataState() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Header
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.water_drop_outlined,
+                color: Colors.grey.shade400,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'No Tank Assigned',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Contact admin to assign a tank',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade500,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 40),
+
+        // Empty state illustration
+        Container(
+          width: double.infinity,
+          height: 200,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200, width: 2),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.water_drop_outlined,
+                size: 64,
+                color: Colors.grey.shade300,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No Tank Data Available',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade500,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You don\'t have any tanks assigned to your account',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 32),
+
+        // Refresh button
+        Center(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              _fetchMainTankData();
+              _fetchUserData();
+            },
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text(
+              'Refresh Data',
+              style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.2),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Constants.primaryColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(25),
+              ),
+              elevation: 4,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Build error state when there's an actual error
+  Widget _buildErrorState(String errorMessage) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Header
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.error_outline_rounded,
+                color: Colors.red.shade400,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Connection Error',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.red.shade600,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Unable to load tank data',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.red.shade500,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 40),
+
+        // Error state illustration
+        Container(
+          width: double.infinity,
+          height: 200,
+          decoration: BoxDecoration(
+            color: Colors.red.shade50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.red.shade100, width: 2),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.cloud_off_rounded,
+                size: 64,
+                color: Colors.red.shade300,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Failed to Load Data',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.red.shade600,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  errorMessage,
+                  style: TextStyle(fontSize: 12, color: Colors.red.shade500),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 32),
+
+        // Retry button
+        Center(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              _fetchMainTankData();
+              _fetchUserData();
+            },
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text(
+              'Try Again',
+              style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.2),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade500,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(25),
+              ),
+              elevation: 4,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
