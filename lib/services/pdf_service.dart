@@ -5,9 +5,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../models/bill_model.dart';
+import '../models/user_model.dart';
 
 class PdfService {
-  static Future<File> generateBillPdf(Bill bill) async {
+  static Future<File> generateBillPdf(Bill bill, {User? customerData}) async {
     final pdf = pw.Document();
 
     // Logo placeholder instead of loading image
@@ -35,6 +36,26 @@ class PdfService {
     // Format date
     final DateFormat dateFormat = DateFormat('MMMM dd, yyyy');
     final String formattedDate = dateFormat.format(DateTime.now());
+
+    // Format payment and due dates
+    final String paymentDate = bill.status == 'Paid'
+        ? (bill.paymentDate != null
+            ? dateFormat.format(bill.paymentDate!)
+            : dateFormat.format(bill.updatedAt))
+        : 'Not paid yet';
+
+    final String dueDate = bill.status == 'Unpaid'
+        ? (bill.dueDate != null
+            ? dateFormat.format(bill.dueDate!)
+            : _calculateDueDate(bill.createdAt, dateFormat))
+        : 'N/A';
+
+    // Customer information
+    final String customerName = customerData?.name ?? 'Customer Name';
+    final String customerId = customerData?.identityNumber ?? bill.customer;
+    final String customerEmail = customerData?.email ?? 'Not provided';
+    final String customerPhone = customerData?.phone ?? 'Not provided';
+    final String customerAddress = _formatCustomerAddress(customerData);
 
     // Define colors
     final PdfColor primaryColor = PdfColor.fromHex('1976D2'); // Primary color
@@ -200,16 +221,24 @@ class PdfService {
                 children: [
                   _buildInfoRow(
                     'Customer ID:',
-                    'CUST-${bill.id.substring(0, 6)}',
+                    customerId,
                   ),
                   _buildInfoRow(
                     'Name:',
-                    'Customer Name',
-                  ), // Replace with actual customer name
+                    customerName,
+                  ),
+                  _buildInfoRow(
+                    'Email:',
+                    customerEmail,
+                  ),
+                  _buildInfoRow(
+                    'Phone:',
+                    customerPhone,
+                  ),
                   _buildInfoRow(
                     'Address:',
-                    'Customer Address',
-                  ), // Replace with actual address
+                    customerAddress,
+                  ),
                 ],
               ),
             ),
@@ -241,18 +270,18 @@ class PdfService {
                   ),
                   _buildBillDetailRow(
                     'Price for Water:',
-                    '\$${bill.priceForLetters.toStringAsFixed(2)}',
+                    '₪${bill.priceForLetters.toStringAsFixed(2)}',
                     false,
                   ),
                   _buildBillDetailRow(
                     'Fees:',
-                    '\$${bill.fees.toStringAsFixed(2)}',
+                    '₪${bill.fees.toStringAsFixed(2)}',
                     false,
                   ),
                   pw.Divider(color: PdfColors.grey300),
                   _buildBillDetailRow(
                     'Total:',
-                    '\$${bill.totalPrice.toStringAsFixed(2)}',
+                    '₪${bill.totalPrice.toStringAsFixed(2)}',
                     true,
                   ),
                 ],
@@ -284,13 +313,17 @@ class PdfService {
                   if (bill.status == 'Paid')
                     _buildInfoRow(
                       'Payment Date:',
-                      'Payment date',
-                    ), // Replace with actual payment date
+                      paymentDate,
+                    ),
                   if (bill.status == 'Unpaid')
                     _buildInfoRow(
                       'Due Date:',
-                      'Due date',
-                    ), // Replace with actual due date
+                      dueDate,
+                    ),
+                  _buildInfoRow(
+                    'Bill Generated:',
+                    dateFormat.format(bill.createdAt),
+                  ),
                   pw.SizedBox(height: 10),
                   pw.Text(
                     'Payment Methods:',
@@ -412,5 +445,39 @@ class PdfService {
     if (result.type != ResultType.done) {
       throw Exception('Could not open the file: ${result.message}');
     }
+  }
+
+  /// Helper method to calculate due date (30 days from bill creation)
+  static String _calculateDueDate(DateTime createdAt, DateFormat dateFormat) {
+    final dueDate = createdAt.add(const Duration(days: 30));
+    return dateFormat.format(dueDate);
+  }
+
+  /// Helper method to format customer address
+  static String _formatCustomerAddress(User? customerData) {
+    if (customerData == null) {
+      return 'Address not available';
+    }
+
+    // Build address from available fields
+    List<String> addressParts = [];
+
+    if (customerData.address != null && customerData.address!.isNotEmpty) {
+      addressParts.add(customerData.address!);
+    }
+
+    if (customerData.city != null && customerData.city!.isNotEmpty) {
+      addressParts.add(customerData.city!);
+    }
+
+    if (customerData.postalCode != null && customerData.postalCode!.isNotEmpty) {
+      addressParts.add(customerData.postalCode!);
+    }
+
+    if (addressParts.isEmpty) {
+      return 'Address not provided';
+    }
+
+    return addressParts.join(', ');
   }
 }

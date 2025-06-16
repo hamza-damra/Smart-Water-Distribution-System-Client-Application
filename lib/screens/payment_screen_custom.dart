@@ -126,7 +126,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Your payment of \$${widget.bill.totalPrice.toStringAsFixed(2)} has been processed successfully.',
+                  'Your payment of ₪${widget.bill.totalPrice.toStringAsFixed(2)} has been processed successfully.',
                   style: const TextStyle(fontSize: 16),
                 ),
                 const SizedBox(height: 16),
@@ -336,7 +336,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        '\$${widget.bill.totalPrice.toStringAsFixed(2)}',
+                        '₪${widget.bill.totalPrice.toStringAsFixed(2)}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -357,13 +357,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     const SizedBox(width: 20),
                     _buildInfoItem(
                       'Water Price',
-                      '\$${widget.bill.priceForLetters.toStringAsFixed(2)}',
+                      '₪${widget.bill.priceForLetters.toStringAsFixed(2)}',
                       Icons.attach_money,
                     ),
                     const SizedBox(width: 20),
                     _buildInfoItem(
                       'Fees',
-                      '\$${widget.bill.fees.toStringAsFixed(2)}',
+                      '₪${widget.bill.fees.toStringAsFixed(2)}',
                       Icons.account_balance,
                     ),
                   ],
@@ -778,7 +778,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     const Icon(Icons.lock, size: 20),
                     const SizedBox(width: 10),
                     Text(
-                      'Pay \$${widget.bill.totalPrice.toStringAsFixed(2)}',
+                      'Pay ₪${widget.bill.totalPrice.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,

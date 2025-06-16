@@ -13,6 +13,12 @@ class MainTankProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   MainTank? get mainTank => _mainTank;
 
+  // Check if there's an error
+  bool get hasError => _errorMessage != null;
+
+  // Check if user has no tank data (not an error, just no data available)
+  bool get hasNoTankData => !_isLoading && _errorMessage == null && _mainTank == null;
+
   // Fetch main tank data from current user endpoint
   Future<void> fetchMainTankData(AuthProvider authProvider) async {
     if (authProvider.accessToken == null) {

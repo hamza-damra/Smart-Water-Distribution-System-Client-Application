@@ -129,9 +129,10 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
   }
 
   Future<void> _saveAndValidateUrl() async {
-    if (_connectionStatus != 'Connection successful') {
+    // Check if URL is empty
+    if (_urlController.text.trim().isEmpty) {
       setState(() {
-        _errorMessage = 'Please verify server connection before saving';
+        _errorMessage = 'Please enter a server URL';
       });
       return;
     }
@@ -144,7 +145,7 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
     try {
       HapticFeedback.mediumImpact();
       String url = _urlController.text.trim();
-      
+
       // Add https:// if not present
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'https://$url';
@@ -357,6 +358,37 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Info message about optional validation
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.blue.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.blue,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Connection test is optional. You can save and continue even if the server is not reachable.',
+                            style: TextStyle(
+                              color: Colors.blue.shade700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 24),

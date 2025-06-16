@@ -9,6 +9,8 @@ import '../utilities/route_manager.dart';
 import '../utilities/constants.dart';
 import '../widgets/bills_shimmer_loading.dart';
 import '../services/pdf_service.dart';
+import '../services/user_service.dart';
+import '../models/user_model.dart';
 import 'dart:io';
 import 'dart:async';
 
@@ -569,7 +571,7 @@ class _BillsScreenState extends State<BillsScreen>
           ),
           const SizedBox(height: 6),
           Text(
-            '\$${amount.toStringAsFixed(2)}',
+            '\₪${amount.toStringAsFixed(2)}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
@@ -638,7 +640,7 @@ class _BillsScreenState extends State<BillsScreen>
           ),
           const SizedBox(height: 4),
           Text(
-            '\$${amount.toStringAsFixed(2)}',
+            '\₪${amount.toStringAsFixed(2)}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -707,7 +709,7 @@ class _BillsScreenState extends State<BillsScreen>
           ),
           const SizedBox(height: 2),
           Text(
-            '\$${amount.toStringAsFixed(2)}',
+            '\₪${amount.toStringAsFixed(2)}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 14,
@@ -758,7 +760,7 @@ class _BillsScreenState extends State<BillsScreen>
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
-                '\$${amount.toStringAsFixed(2)}',
+                '\₪${amount.toStringAsFixed(2)}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -977,14 +979,14 @@ class _BillsScreenState extends State<BillsScreen>
                 const SizedBox(height: 12),
                 _buildModernInfoRow(
                   'Price for Water',
-                  '\$${bill.priceForLetters.toStringAsFixed(2)}',
+                  '₪${bill.priceForLetters.toStringAsFixed(2)}',
                   Icons.attach_money_rounded,
                   const Color(0xFF10B981),
                 ),
                 const SizedBox(height: 12),
                 _buildModernInfoRow(
                   'Fees',
-                  '\$${bill.fees.toStringAsFixed(2)}',
+                  '₪${bill.fees.toStringAsFixed(2)}',
                   Icons.account_balance_rounded,
                   const Color(0xFFF59E0B),
                 ),
@@ -1001,7 +1003,7 @@ class _BillsScreenState extends State<BillsScreen>
                   ),
                   child: _buildModernInfoRow(
                     'Total Amount',
-                    '\$${bill.totalPrice.toStringAsFixed(2)}',
+                    '₪${bill.totalPrice.toStringAsFixed(2)}',
                     Icons.summarize_rounded,
                     statusColor,
                     isBold: true,
@@ -1147,8 +1149,17 @@ class _BillsScreenState extends State<BillsScreen>
       // Show loading indicator
       _showLoadingDialog('Generating PDF...');
 
+      // Get customer data for PDF
+      User? customerData;
+      try {
+        customerData = await UserService.getCurrentUser();
+      } catch (e) {
+        debugPrint('Warning: Could not fetch customer data for PDF: $e');
+        // Continue without customer data - PDF will use fallback values
+      }
+
       // Generate PDF
-      final File pdfFile = await PdfService.generateBillPdf(bill);
+      final File pdfFile = await PdfService.generateBillPdf(bill, customerData: customerData);
 
       // Check if widget is still mounted before using context
       if (!mounted) return;

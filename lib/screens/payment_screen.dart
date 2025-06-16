@@ -247,7 +247,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Payment of \$${widget.bill.totalPrice.toStringAsFixed(2)} processed successfully!',
+                    'Payment of ₪${widget.bill.totalPrice.toStringAsFixed(2)} processed successfully!',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -555,7 +555,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                         ),
                       ),
                       child: Text(
-                        '\$${widget.bill.totalPrice.toStringAsFixed(2)}',
+                        '₪${widget.bill.totalPrice.toStringAsFixed(2)}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 28,
@@ -963,14 +963,14 @@ class _PaymentScreenState extends State<PaymentScreen>
                 const SizedBox(height: 12),
                 _buildSummaryRow(
                   'Water Price',
-                  '\$${widget.bill.priceForLetters.toStringAsFixed(2)}',
+                  '₪${widget.bill.priceForLetters.toStringAsFixed(2)}',
                   Icons.attach_money_rounded,
                   const Color(0xFF10B981),
                 ),
                 const SizedBox(height: 12),
                 _buildSummaryRow(
                   'Service Fees',
-                  '\$${widget.bill.fees.toStringAsFixed(2)}',
+                  '₪${widget.bill.fees.toStringAsFixed(2)}',
                   Icons.account_balance_rounded,
                   const Color(0xFFF59E0B),
                 ),
@@ -987,7 +987,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                   ),
                   child: _buildSummaryRow(
                     'Total Amount',
-                    '\$${widget.bill.totalPrice.toStringAsFixed(2)}',
+                    '₪${widget.bill.totalPrice.toStringAsFixed(2)}',
                     Icons.summarize_rounded,
                     Constants.primaryColor,
                     isBold: true,
@@ -1224,7 +1224,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                       const Icon(Icons.lock_rounded, size: 20),
                       const SizedBox(width: 12),
                       Text(
-                        'Pay \$${widget.bill.totalPrice.toStringAsFixed(2)}',
+                        'Pay ₪${widget.bill.totalPrice.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

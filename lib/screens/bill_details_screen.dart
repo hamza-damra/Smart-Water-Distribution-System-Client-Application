@@ -2,7 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mytank/models/bill_model.dart';
+import 'package:mytank/models/user_model.dart';
 import 'package:mytank/services/pdf_service.dart';
+import 'package:mytank/services/user_service.dart';
 import 'package:mytank/utilities/constants.dart';
 import 'package:provider/provider.dart';
 import 'package:mytank/providers/auth_provider.dart';
@@ -195,7 +197,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
 
                         // Total amount
                         Text(
-                          '\$${widget.bill.totalPrice.toStringAsFixed(2)}',
+                          '₪${widget.bill.totalPrice.toStringAsFixed(2)}',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 36,
@@ -252,19 +254,19 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                         const Divider(),
                         _buildDetailRow(
                           'Price for Water',
-                          '\$${widget.bill.priceForLetters.toStringAsFixed(2)}',
+                          '₪${widget.bill.priceForLetters.toStringAsFixed(2)}',
                           icon: Icons.attach_money_outlined,
                         ),
                         const Divider(),
                         _buildDetailRow(
                           'Fees',
-                          '\$${widget.bill.fees.toStringAsFixed(2)}',
+                          '₪${widget.bill.fees.toStringAsFixed(2)}',
                           icon: Icons.account_balance_outlined,
                         ),
                         const Divider(),
                         _buildDetailRow(
                           'Total Amount',
-                          '\$${widget.bill.totalPrice.toStringAsFixed(2)}',
+                          '₪${widget.bill.totalPrice.toStringAsFixed(2)}',
                           isTotal: true,
                           icon: Icons.summarize_outlined,
                         ),
@@ -496,8 +498,17 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
       // Show loading indicator
       _showLoadingDialog('Generating PDF...');
 
+      // Get customer data for PDF
+      User? customerData;
+      try {
+        customerData = await UserService.getCurrentUser();
+      } catch (e) {
+        debugPrint('Warning: Could not fetch customer data for PDF: $e');
+        // Continue without customer data - PDF will use fallback values
+      }
+
       // Generate PDF
-      final File pdfFile = await PdfService.generateBillPdf(bill);
+      final File pdfFile = await PdfService.generateBillPdf(bill, customerData: customerData);
 
       // Check if widget is still mounted before using context
       if (!mounted) return;
