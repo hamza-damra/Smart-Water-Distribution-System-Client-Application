@@ -38,24 +38,26 @@ class PdfService {
     final String formattedDate = dateFormat.format(DateTime.now());
 
     // Format payment and due dates
-    final String paymentDate = bill.status == 'Paid'
-        ? (bill.paymentDate != null
-            ? dateFormat.format(bill.paymentDate!)
-            : dateFormat.format(bill.updatedAt))
-        : 'Not paid yet';
+    final String paymentDate =
+        bill.status == 'Paid'
+            ? (bill.paymentDate != null
+                ? dateFormat.format(bill.paymentDate!)
+                : dateFormat.format(bill.updatedAt))
+            : 'Not paid yet';
 
-    final String dueDate = bill.status == 'Unpaid'
-        ? (bill.dueDate != null
-            ? dateFormat.format(bill.dueDate!)
-            : _calculateDueDate(bill.createdAt, dateFormat))
-        : 'N/A';
+    final String dueDate =
+        bill.status == 'Unpaid'
+            ? (bill.dueDate != null
+                ? dateFormat.format(bill.dueDate!)
+                : _calculateDueDate(bill.createdAt, dateFormat))
+            : 'N/A';
 
     // Customer information
     final String customerName = customerData?.name ?? 'Customer Name';
     final String customerId = customerData?.identityNumber ?? bill.customer;
     final String customerEmail = customerData?.email ?? 'Not provided';
     final String customerPhone = customerData?.phone ?? 'Not provided';
-    final String customerAddress = _formatCustomerAddress(customerData);
+    final String customerAddress = _formatCustomerAddress(customerData, bill);
 
     // Define colors
     final PdfColor primaryColor = PdfColor.fromHex('1976D2'); // Primary color
@@ -219,26 +221,11 @@ class PdfService {
               ),
               child: pw.Column(
                 children: [
-                  _buildInfoRow(
-                    'Customer ID:',
-                    customerId,
-                  ),
-                  _buildInfoRow(
-                    'Name:',
-                    customerName,
-                  ),
-                  _buildInfoRow(
-                    'Email:',
-                    customerEmail,
-                  ),
-                  _buildInfoRow(
-                    'Phone:',
-                    customerPhone,
-                  ),
-                  _buildInfoRow(
-                    'Address:',
-                    customerAddress,
-                  ),
+                  _buildInfoRow('Customer ID:', customerId),
+                  _buildInfoRow('Name:', customerName),
+                  _buildInfoRow('Email:', customerEmail),
+                  _buildInfoRow('Phone:', customerPhone),
+                  _buildInfoRow('Address:', customerAddress),
                 ],
               ),
             ),
@@ -270,18 +257,18 @@ class PdfService {
                   ),
                   _buildBillDetailRow(
                     'Price for Water:',
-                    '₪${bill.priceForLetters.toStringAsFixed(2)}',
+                    '${bill.priceForLetters.toStringAsFixed(2)} ILS',
                     false,
                   ),
                   _buildBillDetailRow(
                     'Fees:',
-                    '₪${bill.fees.toStringAsFixed(2)}',
+                    '${bill.fees.toStringAsFixed(2)} ILS',
                     false,
                   ),
                   pw.Divider(color: PdfColors.grey300),
                   _buildBillDetailRow(
                     'Total:',
-                    '₪${bill.totalPrice.toStringAsFixed(2)}',
+                    '${bill.totalPrice.toStringAsFixed(2)} ILS',
                     true,
                   ),
                 ],
@@ -311,15 +298,9 @@ class PdfService {
                 children: [
                   _buildInfoRow('Payment Status:', bill.status),
                   if (bill.status == 'Paid')
-                    _buildInfoRow(
-                      'Payment Date:',
-                      paymentDate,
-                    ),
+                    _buildInfoRow('Payment Date:', paymentDate),
                   if (bill.status == 'Unpaid')
-                    _buildInfoRow(
-                      'Due Date:',
-                      dueDate,
-                    ),
+                    _buildInfoRow('Due Date:', dueDate),
                   _buildInfoRow(
                     'Bill Generated:',
                     dateFormat.format(bill.createdAt),
@@ -334,38 +315,10 @@ class PdfService {
                   ),
                   pw.SizedBox(height: 4),
                   pw.Text(
-                    '• Online Payment through the Smart Water System App',
-                    style: const pw.TextStyle(fontSize: 10),
-                  ),
-                  pw.Text(
-                    '• Bank Transfer to Account #: 123-456-789',
+                    '# Online Payment through the Smart Water System App',
                     style: const pw.TextStyle(fontSize: 10),
                   ),
                 ],
-              ),
-            ),
-
-            pw.SizedBox(height: 30),
-
-            // Thank you note
-            pw.Center(
-              child: pw.Text(
-                'Thank you for using our Smart Water System!',
-                style: pw.TextStyle(
-                  fontSize: 14,
-                  fontWeight: pw.FontWeight.bold,
-                  color: primaryColor,
-                ),
-              ),
-            ),
-            pw.SizedBox(height: 8),
-            pw.Center(
-              child: pw.Text(
-                'For any inquiries, please contact support@smartwater.com',
-                style: const pw.TextStyle(
-                  fontSize: 10,
-                  color: PdfColors.grey600,
-                ),
               ),
             ),
           ];
@@ -454,26 +407,35 @@ class PdfService {
   }
 
   /// Helper method to format customer address
-  static String _formatCustomerAddress(User? customerData) {
-    if (customerData == null) {
-      return 'Address not available';
-    }
-
+  static String _formatCustomerAddress(User? customerData, Bill bill) {
     // Build address from available fields
     List<String> addressParts = [];
 
-    if (customerData.address != null && customerData.address!.isNotEmpty) {
-      addressParts.add(customerData.address!);
+    // First, try to get address from customer data
+    if (customerData != null) {
+      if (customerData.address != null && customerData.address!.isNotEmpty) {
+        addressParts.add(customerData.address!);
+      }
+
+      if (customerData.city != null && customerData.city!.isNotEmpty) {
+        addressParts.add(customerData.city!);
+      }
+
+      if (customerData.postalCode != null &&
+          customerData.postalCode!.isNotEmpty) {
+        addressParts.add(customerData.postalCode!);
+      }
     }
 
-    if (customerData.city != null && customerData.city!.isNotEmpty) {
-      addressParts.add(customerData.city!);
+    // If no address from customer data, try to get city from bill's tank data
+    if (addressParts.isEmpty) {
+      final cityFromTank = bill.cityName;
+      if (cityFromTank != null && cityFromTank.isNotEmpty) {
+        addressParts.add(cityFromTank);
+      }
     }
 
-    if (customerData.postalCode != null && customerData.postalCode!.isNotEmpty) {
-      addressParts.add(customerData.postalCode!);
-    }
-
+    // If still no address, return default message
     if (addressParts.isEmpty) {
       return 'Address not provided';
     }

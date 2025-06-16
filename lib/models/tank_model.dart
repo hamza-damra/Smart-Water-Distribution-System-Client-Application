@@ -41,12 +41,21 @@ class Tank {
       );
     }
 
+    // Handle city field - can be either string or object
+    String cityName = '';
+    if (json['city'] is Map<String, dynamic>) {
+      final cityData = json['city'] as Map<String, dynamic>;
+      cityName = cityData['name'] ?? '';
+    } else if (json['city'] is String) {
+      cityName = json['city'] ?? '';
+    }
+
     return Tank(
       id: json['_id'] ?? json['id'] ?? '',
       owner: json['owner'] ?? '',
       radius: (json['radius'] ?? 0).toDouble(),
       height: (json['height'] ?? 0).toDouble(),
-      city: json['city'] ?? '',
+      city: cityName,
       familyMembers: members,
       currentLevel: (json['current_level'] ?? 0).toDouble(),
       amountPerMonth: json['amount_per_month'] ?? {},

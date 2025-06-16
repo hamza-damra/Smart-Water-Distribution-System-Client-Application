@@ -334,7 +334,7 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
                         const Divider(),
                         _buildDetailRow(
                           'Tank ID',
-                          'TANK-${widget.bill.tank.substring(0, 6)}',
+                          'TANK-${(widget.bill.tankId ?? 'Unknown').substring(0, 6)}',
                           icon: Icons.water_outlined,
                         ),
                       ],
@@ -508,7 +508,10 @@ class _BillDetailsScreenState extends State<BillDetailsScreen> {
       }
 
       // Generate PDF
-      final File pdfFile = await PdfService.generateBillPdf(bill, customerData: customerData);
+      final File pdfFile = await PdfService.generateBillPdf(
+        bill,
+        customerData: customerData,
+      );
 
       // Check if widget is still mounted before using context
       if (!mounted) return;

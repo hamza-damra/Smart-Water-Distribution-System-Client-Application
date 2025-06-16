@@ -10,6 +10,9 @@ class User {
   final String createdAt;
   final String updatedAt;
   final String? avatarUrl;
+  final String? address;
+  final String? city;
+  final String? postalCode;
 
   User({
     required this.id,
@@ -23,6 +26,9 @@ class User {
     required this.createdAt,
     required this.updatedAt,
     this.avatarUrl,
+    this.address,
+    this.city,
+    this.postalCode,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -38,6 +44,9 @@ class User {
       createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'] ?? '',
       avatarUrl: json['avatar_url'],
+      address: json['address'],
+      city: json['city'],
+      postalCode: json['postal_code'],
     );
   }
 
