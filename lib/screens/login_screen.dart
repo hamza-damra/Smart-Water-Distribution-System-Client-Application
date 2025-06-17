@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mytank/providers/auth_provider.dart';
 import 'package:mytank/utilities/route_manager.dart';
-import 'package:mytank/utilities/constants.dart';
+import 'package:mytank/utilities/custom_toast.dart';
+
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,27 +21,11 @@ class LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _checkServerConfig();
-  }
-
-  Future<void> _checkServerConfig() async {
-    final prefs = await SharedPreferences.getInstance();
-    final hasServerConfig = prefs.containsKey('server_url');
-
-    if (mounted && !hasServerConfig) {
-      Navigator.pushReplacementNamed(context, RouteManager.serverConfigRoute);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-
-    if (authProvider.isAuthenticated) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacementNamed(context, RouteManager.homeRoute);
-      });
-    }
 
     return Scaffold(
       body: Container(
@@ -57,9 +41,50 @@ class LoginScreenState extends State<LoginScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
+                // Settings icon in top left
+                Padding(
+                  padding: const EdgeInsets.only(left: 20, top: 20, right: 20),
+                  child: Row(
+                    children: [
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.pushNamed(context, '/server-config');
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.settings_outlined,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                    ],
+                  ),
+                ),
                 // Top section with logo and welcome text
                 Padding(
-                  padding: const EdgeInsets.only(top: 40, bottom: 30),
+                  padding: const EdgeInsets.only(top: 20, bottom: 30),
                   child: Column(
                     children: [
                       // Logo container
@@ -247,16 +272,13 @@ class LoginScreenState extends State<LoginScreen> {
                                           _identityNumberController.text.trim();
                                       final password =
                                           _passwordController.text.trim();
-                                      final scaffoldMessenger =
-                                          ScaffoldMessenger.of(context);
-                                      final navigator = Navigator.of(context);
+                                      final currentContext = context;
 
-                                      if (identityNumber.isEmpty || password.isEmpty) {
-                                        scaffoldMessenger.showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Please fill in all fields'),
-                                            backgroundColor: Colors.red,
-                                          ),
+                                      if (identityNumber.isEmpty ||
+                                          password.isEmpty) {
+                                        CustomToast.showError(
+                                          currentContext,
+                                          'Please fill in all fields',
                                         );
                                         return;
                                       }
@@ -267,24 +289,32 @@ class LoginScreenState extends State<LoginScreen> {
                                           password,
                                         );
                                         if (mounted) {
-                                          scaffoldMessenger.showSnackBar(
-                                            const SnackBar(
-                                              content: Text('Login Successful!'),
-                                              backgroundColor: Colors.green,
-                                            ),
+                                          CustomToast.showSuccess(
+                                            currentContext,
+                                            'Login successful! Welcome back.',
                                           );
-                                          navigator.pushReplacementNamed(
+                                          Navigator.of(
+                                            currentContext,
+                                          ).pushReplacementNamed(
                                             RouteManager.homeRoute,
                                           );
                                         }
                                       } catch (e) {
                                         if (mounted) {
-                                          scaffoldMessenger.showSnackBar(
-                                            SnackBar(
-                                              content: Text('Login Failed: ${e.toString()}'),
-                                              backgroundColor: Colors.red,
-                                            ),
-                                          );
+                                          // Check if it's a network error and show appropriate toast
+                                          if (e.toString().contains(
+                                            'Invalid credentials',
+                                          )) {
+                                            CustomToast.showError(
+                                              currentContext,
+                                              'Invalid identity number or password. Please try again.',
+                                            );
+                                          } else {
+                                            CustomToast.showNetworkError(
+                                              currentContext,
+                                              e,
+                                            );
+                                          }
                                         }
                                       }
                                     },

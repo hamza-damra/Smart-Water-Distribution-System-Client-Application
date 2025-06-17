@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../utilities/constants.dart';
 
 class ForgotPasswordProvider with ChangeNotifier {
   bool _isLoading = false;
@@ -11,10 +12,8 @@ class ForgotPasswordProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    final Uri url = Uri.parse('https://smart-water-distribution-system.onrender.com/api/customer/forgot-password');
-    final Map<String, String> body = {
-      'email': email,
-    };
+    final Uri url = Uri.parse('${Constants.apiUrl}/customer/forgot-password');
+    final Map<String, String> body = {'email': email};
 
     try {
       final response = await http.post(

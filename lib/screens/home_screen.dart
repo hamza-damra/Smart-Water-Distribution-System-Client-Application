@@ -157,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
 
     if (authProvider.accessToken != null) {
-      mainTankProvider.fetchMainTankData(authProvider);
+      mainTankProvider.refreshAllData(authProvider);
     }
   }
 
@@ -464,6 +464,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         _buildDivider(),
                         const SizedBox(height: 15),
 
+                        _buildEnhancedDrawerItem(
+                          icon: Icons.settings_rounded,
+                          title: 'Settings',
+                          color: const Color(0xFF6B7280),
+                          onTap:
+                              () => _navigateFromDrawer(
+                                context,
+                                RouteManager.settingsRoute,
+                              ),
+                        ),
                         _buildEnhancedDrawerItem(
                           icon: Icons.help_outline_rounded,
                           title: 'Help & Support',
@@ -1113,10 +1123,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   final waterLevel =
                                       mainTankProvider.waterLevelPercentage;
 
-                                  // Calculate water level and capacity values
+                                  // Calculate water level and capacity values using sensor data when available
                                   double currentLevelLiters =
-                                      mainTankProvider.mainTank?.currentLevel ??
-                                      0.0;
+                                      mainTankProvider.currentWaterVolume;
                                   double maxCapacityLiters =
                                       mainTankProvider.mainTank?.maxCapacity ??
                                       1.0;
@@ -1179,95 +1188,141 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       ),
                                       const SizedBox(height: 24),
 
-                                      // Enhanced water level display from tanks screen
-                                      Padding(
+                                      // Enhanced water level display with fixed overflow
+                                      Container(
+                                        margin: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 24,
+                                        ),
                                         padding: const EdgeInsets.all(24),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.all(12),
-                                              decoration: BoxDecoration(
-                                                color: levelColor.withAlpha(20),
-                                                borderRadius:
-                                                    BorderRadius.circular(16),
-                                              ),
-                                              child: Icon(
-                                                Icons.water_drop,
-                                                color: levelColor,
-                                                size: 28,
-                                              ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withAlpha(8),
+                                              blurRadius: 15,
+                                              offset: const Offset(0, 6),
                                             ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  const Text(
-                                                    'Water Level',
-                                                    style: TextStyle(
-                                                      fontSize: 18,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: Colors.black87,
-                                                    ),
+                                          ],
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            // Header row with icon, title and percentage
+                                            Row(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.all(
+                                                    12,
                                                   ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    '${currentLevelLiters.toStringAsFixed(1)} L / ${maxCapacityLiters.toStringAsFixed(1)} L',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color:
-                                                          Colors.grey.shade600,
+                                                  decoration: BoxDecoration(
+                                                    color: levelColor.withAlpha(
+                                                      20,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          16,
+                                                        ),
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.water_drop,
+                                                    color: levelColor,
+                                                    size: 28,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 16),
+                                                Expanded(
+                                                  flex: 2,
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      const Text(
+                                                        'Water Level',
+                                                        style: TextStyle(
+                                                          fontSize: 20,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color: Colors.black87,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 6),
+                                                      Text(
+                                                        '${currentLevelLiters.toStringAsFixed(2)} L / ${maxCapacityLiters.toStringAsFixed(2)} L',
+                                                        style: TextStyle(
+                                                          fontSize: 15,
+                                                          color:
+                                                              Colors
+                                                                  .grey
+                                                                  .shade600,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                        overflow:
+                                                            TextOverflow
+                                                                .ellipsis,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            // Sensor status row (if using sensor data)
+                                            if (mainTankProvider
+                                                .isUsingSensorData) ...[
+                                              const SizedBox(height: 16),
+                                              Row(
+                                                children: [
+                                                  const SizedBox(
+                                                    width: 56,
+                                                  ), // Align with text above
+                                                  Icon(
+                                                    Icons.sensors,
+                                                    size: 14,
+                                                    color:
+                                                        mainTankProvider
+                                                            .sensorStatusColor,
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Expanded(
+                                                    child: Text(
+                                                      'Live sensor: ${mainTankProvider.sensorStatus}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color:
+                                                            mainTankProvider
+                                                                .sensorStatusColor,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
                                                   ),
                                                 ],
                                               ),
-                                            ),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 16,
-                                                    vertical: 10,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: levelColor.withAlpha(20),
-                                                borderRadius:
-                                                    BorderRadius.circular(20),
-                                                border: Border.all(
-                                                  color: levelColor.withAlpha(
-                                                    100,
-                                                  ),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              child: Text(
-                                                "${(waterLevel * 100).toStringAsFixed(1)}%",
-                                                style: TextStyle(
-                                                  color: levelColor,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                            ),
+                                            ],
                                           ],
                                         ),
                                       ),
                                       const SizedBox(height: 24),
 
-                                      // Professional Cylindrical 3D Tank Widget
-                                      WaterTank3D(
-                                        waterLevel: waterLevel,
-                                        maxCapacity:
-                                            mainTankProvider
-                                                .mainTank
-                                                ?.maxCapacity ??
-                                            1.0,
-                                        currentLevel:
-                                            mainTankProvider
-                                                .mainTank
-                                                ?.currentLevel ??
-                                            0.0,
+                                      // Professional Cylindrical 3D Tank Widget with loading overlay
+                                      Stack(
+                                        children: [
+                                          WaterTank3D(
+                                            waterLevel: waterLevel,
+                                            maxCapacity:
+                                                mainTankProvider
+                                                    .mainTank
+                                                    ?.maxCapacity ??
+                                                1.0,
+                                            currentLevel: currentLevelLiters,
+                                          ),
+                                        ],
                                       ),
 
                                       const SizedBox(height: 32),
@@ -1276,7 +1331,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       Center(
                                         child: ElevatedButton.icon(
                                           onPressed:
-                                              mainTankProvider.isLoading ||
+                                              mainTankProvider.isAnyLoading ||
                                                       _isLoadingUser
                                                   ? null
                                                   : () {
@@ -1285,7 +1340,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     _fetchUserData();
                                                   },
                                           icon:
-                                              (mainTankProvider.isLoading ||
+                                              (mainTankProvider.isAnyLoading ||
                                                       _isLoadingUser)
                                                   ? const SizedBox(
                                                     width: 16,
@@ -1302,7 +1357,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     Icons.refresh_rounded,
                                                   ),
                                           label: Text(
-                                            (mainTankProvider.isLoading ||
+                                            (mainTankProvider.isAnyLoading ||
                                                     _isLoadingUser)
                                                 ? 'Refreshing...'
                                                 : 'Refresh Data',
@@ -1344,10 +1399,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             ),
                                           ),
                                           child: Text(
-                                            '🕒 Last updated: Just now',
+                                            mainTankProvider.isUsingSensorData
+                                                ? '🔴 Live sensor data'
+                                                : '🕒 Last updated: Just now',
                                             style: TextStyle(
                                               fontSize: 12,
-                                              color: Constants.greyColor,
+                                              color:
+                                                  mainTankProvider
+                                                          .isUsingSensorData
+                                                      ? Colors.green.shade600
+                                                      : Constants.greyColor,
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),

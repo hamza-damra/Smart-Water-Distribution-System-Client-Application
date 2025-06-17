@@ -38,11 +38,13 @@ class AuthProvider with ChangeNotifier {
     debugPrint('🔔 Access token available: ${_accessToken != null}');
     debugPrint('🔔 User ID available: ${_userId != null}');
     debugPrint('🔔 User ID value: $_userId');
-    
+
     if (_accessToken != null && _userId != null) {
       try {
-        debugPrint('🔔 Initializing real-time notifications with valid credentials');
-        
+        debugPrint(
+          '🔔 Initializing real-time notifications with valid credentials',
+        );
+
         // Get notification provider and initialize real-time notifications
         final notificationProvider = Provider.of<NotificationProvider>(
           context,
@@ -58,16 +60,70 @@ class AuthProvider with ChangeNotifier {
         debugPrint('❌ Error initializing real-time notifications: $e');
       }
     } else {
-      debugPrint('❌ Cannot initialize real-time notifications: Missing credentials');
+      debugPrint(
+        '❌ Cannot initialize real-time notifications: Missing credentials',
+      );
       if (_accessToken == null) debugPrint('  - Missing access token');
       if (_userId == null) debugPrint('  - Missing user ID');
     }
   }
 
-  /// Load any previously saved token from local storage.
+  /// Load any previously saved token from local storage and validate it.
   Future<void> initialize() async {
-    _accessToken = await TokenManager.getToken();
+    try {
+      _accessToken = await TokenManager.getToken();
+
+      // If we have a token, try to validate it by fetching user info
+      if (_accessToken != null) {
+        debugPrint('🔑 Found saved token, validating...');
+        await _validateTokenAndFetchUserInfo();
+      } else {
+        debugPrint('🔑 No saved token found');
+      }
+    } catch (e) {
+      debugPrint('❌ Error during initialization: $e');
+      // Clear invalid token
+      await logout();
+    }
     notifyListeners();
+  }
+
+  /// Validate the current token and fetch user information
+  Future<void> _validateTokenAndFetchUserInfo() async {
+    if (_accessToken == null) return;
+
+    try {
+      final response = await http.get(
+        Uri.parse('${Constants.apiUrl}/customer/current-user'),
+        headers: {
+          'Authorization': 'Bearer $_accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['user'] != null) {
+          _userName = data['user']['name'] ?? data['user']['fullName'];
+          _userId = data['user']['_id'];
+          debugPrint('✅ Token validated successfully for user: $_userName');
+        } else {
+          debugPrint('❌ Invalid token response');
+          await logout();
+        }
+      } else if (response.statusCode == 401) {
+        debugPrint('❌ Token expired or invalid');
+        await logout();
+      } else {
+        debugPrint(
+          '❌ Token validation failed with status: ${response.statusCode}',
+        );
+        // Don't logout on network errors, keep the token for retry
+      }
+    } catch (e) {
+      debugPrint('❌ Token validation error: $e');
+      // Don't logout on network errors, keep the token for retry
+    }
   }
 
   /// Perform login, parse the `access_token` from the Set-Cookie header.
@@ -137,8 +193,9 @@ class AuthProvider with ChangeNotifier {
                 if (responseData['data'] != null) {
                   // If response has 'data' wrapper
                   _userName = responseData['data']['name'] ?? 'User';
-                  _userId = responseData['data']['_id']?.toString() ?? 
-                           responseData['data']['id']?.toString();
+                  _userId =
+                      responseData['data']['_id']?.toString() ??
+                      responseData['data']['id']?.toString();
                 } else if (responseData['_id'] != null) {
                   // If response is the user object directly
                   _userName = responseData['name'] ?? 'User';
@@ -148,10 +205,8 @@ class AuthProvider with ChangeNotifier {
                   _userName = 'User';
                   _userId = null;
                 }
-                
-                debugPrint(
-                  '👤 User info extracted: $_userName (ID: $_userId)',
-                );
+
+                debugPrint('👤 User info extracted: $_userName (ID: $_userId)');
               } catch (e) {
                 debugPrint('❌ Error parsing user data: $e');
                 _userName = 'User';
@@ -183,6 +238,19 @@ class AuthProvider with ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Check if the current session is still valid
+  Future<bool> isSessionValid() async {
+    if (_accessToken == null) return false;
+
+    try {
+      await _validateTokenAndFetchUserInfo();
+      return _accessToken != null; // Will be null if validation failed
+    } catch (e) {
+      debugPrint('❌ Session validation error: $e');
+      return false;
     }
   }
 
@@ -245,7 +313,7 @@ class AuthProvider with ChangeNotifier {
       }
       return false;
     } catch (e) {
-      print('Registration error: $e');
+      debugPrint('Registration error: $e');
       return false;
     }
   }

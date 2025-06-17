@@ -23,7 +23,7 @@ class TanksScreen extends StatefulWidget {
   State<TanksScreen> createState() => _TanksScreenState();
 }
 
-class _TanksScreenState extends State<TanksScreen> 
+class _TanksScreenState extends State<TanksScreen>
     with TickerProviderStateMixin {
   bool _isLoading = true;
   int _selectedTankIndex = 0;
@@ -47,13 +47,9 @@ class _TanksScreenState extends State<TanksScreen>
       vsync: this,
     );
 
-    _rotationAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _rotationController,
-      curve: Curves.linear,
-    ));
+    _rotationAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _rotationController, curve: Curves.linear),
+    );
 
     // Start background rotation animation
     _rotationController.repeat();
@@ -141,10 +137,7 @@ class _TanksScreenState extends State<TanksScreen>
             offset: const Offset(0, 10),
           ),
         ],
-        border: Border.all(
-          color: color.withAlpha(50),
-          width: 1,
-        ),
+        border: Border.all(color: color.withAlpha(50), width: 1),
       ),
       child: Row(
         children: [
@@ -203,11 +196,12 @@ class _TanksScreenState extends State<TanksScreen>
         onRefresh: _refreshData,
         color: Constants.primaryColor,
         backgroundColor: Colors.white,
-        child: _isLoading
-            ? const TankShimmerLoadingEffect()
-            : tanks.isEmpty
-            ? _buildEmptyState()
-            : _buildMainContent(screenSize, tanks, selectedTank, userName),
+        child:
+            _isLoading
+                ? const TankShimmerLoadingEffect()
+                : tanks.isEmpty
+                ? _buildEmptyState()
+                : _buildMainContent(screenSize, tanks, selectedTank, userName),
       ),
     );
   }
@@ -256,7 +250,10 @@ class _TanksScreenState extends State<TanksScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: Constants.primaryColor,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(25),
                 ),
@@ -275,13 +272,21 @@ class _TanksScreenState extends State<TanksScreen>
   }
 
   // Build main content
-  Widget _buildMainContent(Size screenSize, List<Tank> tanks, Tank? selectedTank, String userName) {
+  Widget _buildMainContent(
+    Size screenSize,
+    List<Tank> tanks,
+    Tank? selectedTank,
+    String userName,
+  ) {
     // Calculate water level and capacity values
     double waterLevel = 0.0;
     double currentLevelLiters = 0.0;
     double maxCapacityLiters = 0.0;
     if (selectedTank != null) {
-      waterLevel = (selectedTank.currentLevel / selectedTank.maxCapacity).clamp(0.0, 1.0);
+      waterLevel = (selectedTank.currentLevel / selectedTank.maxCapacity).clamp(
+        0.0,
+        1.0,
+      );
       currentLevelLiters = selectedTank.currentLevel;
       maxCapacityLiters = selectedTank.maxCapacity;
 
@@ -306,28 +311,36 @@ class _TanksScreenState extends State<TanksScreen>
                 if (tanks.length > 1) const SizedBox(height: 20),
 
                 // Tank status summary card
-                _buildTankStatusCard(waterLevel, currentLevelLiters, maxCapacityLiters),
-                
+                _buildTankStatusCard(
+                  waterLevel,
+                  currentLevelLiters,
+                  maxCapacityLiters,
+                ),
+
                 const SizedBox(height: 20),
 
                 // Modern water level indicator card
-                _buildWaterLevelCard(waterLevel, currentLevelLiters, maxCapacityLiters),
-                
+                _buildWaterLevelCard(
+                  waterLevel,
+                  currentLevelLiters,
+                  maxCapacityLiters,
+                ),
+
                 const SizedBox(height: 20),
 
                 // Capacity Information Cards
                 _buildCapacitySection(),
-                
+
                 const SizedBox(height: 20),
 
                 // Usage Statistics Cards
                 _buildUsageStatisticsSection(),
-                
+
                 const SizedBox(height: 20),
 
                 // Usage history card
                 _buildUsageHistoryCard(screenSize, selectedTank),
-                
+
                 const SizedBox(height: 40),
               ],
             ),
@@ -358,10 +371,7 @@ class _TanksScreenState extends State<TanksScreen>
           ],
         ),
         child: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-            color: Colors.black87,
-          ),
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
           onPressed: () {
             HapticFeedback.lightImpact();
             Navigator.pop(context);
@@ -383,10 +393,7 @@ class _TanksScreenState extends State<TanksScreen>
             ],
           ),
           child: IconButton(
-            icon: const Icon(
-              Icons.refresh_rounded,
-              color: Colors.black87,
-            ),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.black87),
             onPressed: () {
               HapticFeedback.mediumImpact();
               _fetchData();
@@ -424,7 +431,9 @@ class _TanksScreenState extends State<TanksScreen>
                         const Color(0xFF764BA2),
                       ],
                       stops: const [0.0, 0.3, 0.7, 1.0],
-                      transform: GradientRotation(_rotationAnimation.value * 0.5),
+                      transform: GradientRotation(
+                        _rotationAnimation.value * 0.5,
+                      ),
                     ),
                   ),
                 );
@@ -436,10 +445,7 @@ class _TanksScreenState extends State<TanksScreen>
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withAlpha(20),
-                  ],
+                  colors: [Colors.transparent, Colors.black.withAlpha(20)],
                 ),
               ),
             ),
@@ -500,10 +506,7 @@ class _TanksScreenState extends State<TanksScreen>
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.grey.shade200,
-                width: 1,
-              ),
+              border: Border.all(color: Colors.grey.shade200, width: 1),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<int>(
@@ -527,9 +530,10 @@ class _TanksScreenState extends State<TanksScreen>
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: _selectedTankIndex == index
-                            ? Constants.primaryColor.withAlpha(20)
-                            : Colors.transparent,
+                        color:
+                            _selectedTankIndex == index
+                                ? Constants.primaryColor.withAlpha(20)
+                                : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -579,13 +583,14 @@ class _TanksScreenState extends State<TanksScreen>
                     Navigator.pushNamed(
                       context,
                       RouteManager.tankDetailsRoute,
-                      arguments: {
-                        'tankId': tanks[value].id,
-                      },
+                      arguments: {'tankId': tanks[value].id},
                     );
 
                     // Fetch detailed data for the newly selected tank
-                    final tanksProvider = Provider.of<TanksProvider>(context, listen: false);
+                    final tanksProvider = Provider.of<TanksProvider>(
+                      context,
+                      listen: false,
+                    );
                     if (tanksProvider.tanks.isNotEmpty) {
                       final selectedTank = tanksProvider.tanks[value];
                       _fetchTankDetails(selectedTank.id);
@@ -600,16 +605,22 @@ class _TanksScreenState extends State<TanksScreen>
     );
   }
 
-  Widget _buildTankStatusCard(double waterLevel, double currentLevelLiters, double maxCapacityLiters) {
-    Color statusColor = waterLevel < 0.3 
-        ? const Color(0xFFEF4444)
-        : waterLevel < 0.7 
+  Widget _buildTankStatusCard(
+    double waterLevel,
+    double currentLevelLiters,
+    double maxCapacityLiters,
+  ) {
+    Color statusColor =
+        waterLevel < 0.3
+            ? const Color(0xFFEF4444)
+            : waterLevel < 0.7
             ? const Color(0xFFF59E0B)
             : const Color(0xFF10B981);
-    
-    String statusText = waterLevel < 0.3 
-        ? 'Low Level'
-        : waterLevel < 0.7 
+
+    String statusText =
+        waterLevel < 0.3
+            ? 'Low Level'
+            : waterLevel < 0.7
             ? 'Normal'
             : 'Optimal';
 
@@ -619,10 +630,7 @@ class _TanksScreenState extends State<TanksScreen>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Constants.primaryColor,
-            Constants.secondaryColor,
-          ],
+          colors: [Constants.primaryColor, Constants.secondaryColor],
         ),
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
@@ -710,11 +718,7 @@ class _TanksScreenState extends State<TanksScreen>
                   color: Colors.white.withAlpha(50),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.water,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                child: const Icon(Icons.water, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -734,10 +738,15 @@ class _TanksScreenState extends State<TanksScreen>
     );
   }
 
-  Widget _buildWaterLevelCard(double waterLevel, double currentLevelLiters, double maxCapacityLiters) {
-    Color levelColor = waterLevel < 0.3 
-        ? const Color(0xFFEF4444)
-        : waterLevel < 0.6 
+  Widget _buildWaterLevelCard(
+    double waterLevel,
+    double currentLevelLiters,
+    double maxCapacityLiters,
+  ) {
+    Color levelColor =
+        waterLevel < 0.3
+            ? const Color(0xFFEF4444)
+            : waterLevel < 0.6
             ? const Color(0xFFF59E0B)
             : const Color(0xFF10B981);
 
@@ -765,11 +774,7 @@ class _TanksScreenState extends State<TanksScreen>
                     color: levelColor.withAlpha(20),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Icon(
-                    Icons.water_drop,
-                    color: levelColor,
-                    size: 28,
-                  ),
+                  child: Icon(Icons.water_drop, color: levelColor, size: 28),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -786,7 +791,7 @@ class _TanksScreenState extends State<TanksScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${currentLevelLiters.toStringAsFixed(1)} L / ${maxCapacityLiters.toStringAsFixed(1)} L',
+                        '${currentLevelLiters.toStringAsFixed(2)} L / ${maxCapacityLiters.toStringAsFixed(2)} L',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade600,
@@ -949,7 +954,9 @@ class _TanksScreenState extends State<TanksScreen>
                   Expanded(
                     child: _buildModernUsageStatCard(
                       'Today',
-                      mainTankProvider.formatUsage(mainTankProvider.currentDayUsage),
+                      mainTankProvider.formatUsage(
+                        mainTankProvider.currentDayUsage,
+                      ),
                       Icons.today_rounded,
                       const Color(0xFF10B981),
                     ),
@@ -958,7 +965,9 @@ class _TanksScreenState extends State<TanksScreen>
                   Expanded(
                     child: _buildModernUsageStatCard(
                       'This Week',
-                      mainTankProvider.formatUsage(mainTankProvider.currentWeekUsage),
+                      mainTankProvider.formatUsage(
+                        mainTankProvider.currentWeekUsage,
+                      ),
                       Icons.calendar_view_week_rounded,
                       const Color(0xFF3B82F6),
                     ),
@@ -971,7 +980,9 @@ class _TanksScreenState extends State<TanksScreen>
                   Expanded(
                     child: _buildModernUsageStatCard(
                       'Daily Avg',
-                      mainTankProvider.formatUsage(mainTankProvider.dailyAverageUsage),
+                      mainTankProvider.formatUsage(
+                        mainTankProvider.dailyAverageUsage,
+                      ),
                       Icons.trending_up_rounded,
                       const Color(0xFFF59E0B),
                     ),
@@ -980,7 +991,9 @@ class _TanksScreenState extends State<TanksScreen>
                   Expanded(
                     child: _buildModernUsageStatCard(
                       'This Month',
-                      mainTankProvider.formatUsage(mainTankProvider.currentMonthUsage),
+                      mainTankProvider.formatUsage(
+                        mainTankProvider.currentMonthUsage,
+                      ),
                       Icons.calendar_month_rounded,
                       const Color(0xFF8B5CF6),
                     ),
@@ -1062,161 +1075,163 @@ class _TanksScreenState extends State<TanksScreen>
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.grey.shade200,
-                width: 1,
-              ),
+              border: Border.all(color: Colors.grey.shade200, width: 1),
             ),
-            child: selectedTank != null
-                ? LineChart(
-                    LineChartData(
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: false,
-                        horizontalInterval: _getMaxChartValue(selectedTank) / 4,
-                        getDrawingHorizontalLine: (value) {
-                          return FlLine(
-                            color: Colors.grey.shade300,
-                            strokeWidth: 1,
-                          );
-                        },
-                      ),
-                      titlesData: FlTitlesData(
-                        show: true,
-                        rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
+            child:
+                selectedTank != null
+                    ? LineChart(
+                      LineChartData(
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: false,
+                          horizontalInterval:
+                              _getMaxChartValue(selectedTank) / 4,
+                          getDrawingHorizontalLine: (value) {
+                            return FlLine(
+                              color: Colors.grey.shade300,
+                              strokeWidth: 1,
+                            );
+                          },
                         ),
-                        topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              final day = value.toInt();
-                              if (day % 5 == 0 || day == 1) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    day.toString(),
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
+                        titlesData: FlTitlesData(
+                          show: true,
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              getTitlesWidget: (value, meta) {
+                                final day = value.toInt();
+                                if (day % 5 == 0 || day == 1) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Text(
+                                      day.toString(),
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
+                                  );
+                                }
+                                return const Text('');
+                              },
+                              reservedSize: 30,
+                            ),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              getTitlesWidget: (value, meta) {
+                                if (value == 0) return const Text('0L');
+                                return Text(
+                                  '${(value).toStringAsFixed(0)}L',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 10,
                                   ),
                                 );
-                              }
-                              return const Text('');
-                            },
-                            reservedSize: 30,
-                          ),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              if (value == 0) return const Text('0L');
-                              return Text(
-                                '${(value).toStringAsFixed(0)}L',
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                  fontSize: 10,
-                                ),
-                              );
-                            },
-                            reservedSize: 40,
-                            interval: _getMaxChartValue(selectedTank) / 4,
-                          ),
-                        ),
-                      ),
-                      borderData: FlBorderData(show: false),
-                      minX: 1,
-                      maxX: _getAllDaysUsage(selectedTank).length.toDouble(),
-                      minY: 0,
-                      maxY: _getMaxChartValue(selectedTank) * 1.1,
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: _getAllDaysUsage(selectedTank)
-                              .asMap()
-                              .entries
-                              .map((entry) {
-                            final day = entry.key + 1;
-                            final usage = entry.value;
-                            return FlSpot(day.toDouble(), usage);
-                          }).toList(),
-                          isCurved: true,
-                          curveSmoothness: 0.35,
-                          color: const Color(0xFF3B82F6),
-                          barWidth: 3,
-                          isStrokeCapRound: true,
-                          dotData: FlDotData(
-                            show: true,
-                            getDotPainter: (spot, percent, barData, index) {
-                              return FlDotCirclePainter(
-                                radius: 4,
-                                color: const Color(0xFF3B82F6),
-                                strokeWidth: 2,
-                                strokeColor: Colors.white,
-                              );
-                            },
-                          ),
-                          belowBarData: BarAreaData(
-                            show: true,
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                const Color(0xFF3B82F6).withAlpha(60),
-                                const Color(0xFF3B82F6).withAlpha(20),
-                                const Color(0xFF3B82F6).withAlpha(5),
-                              ],
+                              },
+                              reservedSize: 40,
+                              interval: _getMaxChartValue(selectedTank) / 4,
                             ),
                           ),
                         ),
-                      ],
-                      lineTouchData: LineTouchData(
-                        enabled: true,
-                        touchTooltipData: LineTouchTooltipData(
-                          getTooltipColor: (touchedSpot) =>
-                              const Color(0xFF3B82F6).withAlpha(200),
-                          getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
-                            return touchedBarSpots.map((barSpot) {
-                              return LineTooltipItem(
-                                'Day ${barSpot.x.toInt()}\n${barSpot.y.toStringAsFixed(1)}L',
-                                const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              );
-                            }).toList();
-                          },
+                        borderData: FlBorderData(show: false),
+                        minX: 1,
+                        maxX: _getAllDaysUsage(selectedTank).length.toDouble(),
+                        minY: 0,
+                        maxY: _getMaxChartValue(selectedTank) * 1.1,
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots:
+                                _getAllDaysUsage(
+                                  selectedTank,
+                                ).asMap().entries.map((entry) {
+                                  final day = entry.key + 1;
+                                  final usage = entry.value;
+                                  return FlSpot(day.toDouble(), usage);
+                                }).toList(),
+                            isCurved: true,
+                            curveSmoothness: 0.35,
+                            color: const Color(0xFF3B82F6),
+                            barWidth: 3,
+                            isStrokeCapRound: true,
+                            dotData: FlDotData(
+                              show: true,
+                              getDotPainter: (spot, percent, barData, index) {
+                                return FlDotCirclePainter(
+                                  radius: 4,
+                                  color: const Color(0xFF3B82F6),
+                                  strokeWidth: 2,
+                                  strokeColor: Colors.white,
+                                );
+                              },
+                            ),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  const Color(0xFF3B82F6).withAlpha(60),
+                                  const Color(0xFF3B82F6).withAlpha(20),
+                                  const Color(0xFF3B82F6).withAlpha(5),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                        lineTouchData: LineTouchData(
+                          enabled: true,
+                          touchTooltipData: LineTouchTooltipData(
+                            getTooltipColor:
+                                (touchedSpot) =>
+                                    const Color(0xFF3B82F6).withAlpha(200),
+                            getTooltipItems: (
+                              List<LineBarSpot> touchedBarSpots,
+                            ) {
+                              return touchedBarSpots.map((barSpot) {
+                                return LineTooltipItem(
+                                  'Day ${barSpot.x.toInt()}\n${barSpot.y.toStringAsFixed(1)}L',
+                                  const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                );
+                              }).toList();
+                            },
+                          ),
+                          handleBuiltInTouches: true,
                         ),
-                        handleBuiltInTouches: true,
+                      ),
+                    )
+                    : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.show_chart_rounded,
+                            size: 48,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Select a tank to view usage data',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  )
-                : Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.show_chart_rounded,
-                          size: 48,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Select a tank to view usage data',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
           ),
         ],
       ),
@@ -1235,10 +1250,7 @@ class _TanksScreenState extends State<TanksScreen>
       decoration: BoxDecoration(
         color: color.withAlpha(10),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: color.withAlpha(50),
-          width: 1,
-        ),
+        border: Border.all(color: color.withAlpha(50), width: 1),
         boxShadow: [
           BoxShadow(
             color: color.withAlpha(10),
@@ -1256,11 +1268,7 @@ class _TanksScreenState extends State<TanksScreen>
               color: color.withAlpha(20),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
+            child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(height: 16),
           Text(

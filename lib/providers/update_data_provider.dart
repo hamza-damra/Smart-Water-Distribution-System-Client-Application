@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import '../providers/auth_provider.dart';
+import '../utilities/constants.dart';
 
 class UpdateDataProvider with ChangeNotifier {
   bool _isLoading = false;
@@ -28,8 +29,7 @@ class UpdateDataProvider with ChangeNotifier {
     try {
       debugPrint('🔍 Fetching user profile data...');
 
-      final apiUrl =
-          'https://smart-water-distribution-system-vll8.onrender.com/api/customer/current-user';
+      final apiUrl = '${Constants.apiUrl}/customer/current-user';
       debugPrint('🌐 Profile API URL: $apiUrl');
 
       final headers = {
@@ -89,9 +89,7 @@ class UpdateDataProvider with ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final Uri url = Uri.parse(
-      'https://smart-water-distribution-system-vll8.onrender.com/api/customer/update-data',
-    );
+    final Uri url = Uri.parse('${Constants.apiUrl}/customer/update-data');
 
     debugPrint('🌐 Update data API URL: ${url.toString()}');
     final Map<String, String> body = {
@@ -177,9 +175,7 @@ class UpdateDataProvider with ChangeNotifier {
     try {
       debugPrint('📸 Starting avatar upload...');
 
-      final uri = Uri.parse(
-        'https://smart-water-distribution-system-vll8.onrender.com/api/customer/upload-avatar',
-      );
+      final uri = Uri.parse('${Constants.apiUrl}/customer/upload-avatar');
 
       var request = http.MultipartRequest('POST', uri);
 

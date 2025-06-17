@@ -5,14 +5,14 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/tank_model.dart';
+import '../utilities/constants.dart';
 
 class TanksProvider with ChangeNotifier {
   List<Tank> _tanks = [];
   List<Tank> get tanks => _tanks;
 
   Future<void> fetchTanks(BuildContext context) async {
-    const url =
-        'https://smart-water-distribution-system-vll8.onrender.com/api/tank/customer-tanks';
+    final url = '${Constants.apiUrl}/tank/customer-tanks';
 
     try {
       // 1) Retrieve the token from AuthProvider

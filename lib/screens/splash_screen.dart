@@ -9,7 +9,8 @@ import 'package:mytank/providers/auth_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Helper method for color opacity
-Color withValues(Color color, double opacity) => color.withOpacity(opacity);
+Color withValues(Color color, double opacity) =>
+    color.withValues(alpha: opacity);
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -18,11 +19,12 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
   late AnimationController _mainController;
   late AnimationController _waveController;
   late AnimationController _particleController;
-  
+
   late Animation<double> _logoFadeAnimation;
   late Animation<double> _logoScaleAnimation;
   late Animation<double> _textSlideAnimation;
@@ -117,7 +119,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   void _startAnimations() {
     _mainController.forward();
-    
+
     // Navigate after animation completes
     _mainController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
@@ -183,7 +185,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     colors: [
                       Constants.primaryColor,
                       Constants.secondaryColor,
-                      Constants.accentColor.withOpacity(0.8),
+                      Constants.accentColor.withValues(alpha: 0.8),
                     ],
                     stops: const [0.0, 0.6, 1.0],
                   ),
@@ -217,10 +219,18 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   final startX = random.nextDouble() * size.width;
                   final speed = random.nextDouble() * 0.5 + 0.3;
                   final particleSize = random.nextDouble() * 6 + 2;
-                  
+
                   return Positioned(
-                    left: startX + math.sin((_particleController.value + index) * math.pi * 2) * 30,
-                    top: size.height - (size.height * _particleController.value * speed) % (size.height + 100),
+                    left:
+                        startX +
+                        math.sin(
+                              (_particleController.value + index) * math.pi * 2,
+                            ) *
+                            30,
+                    top:
+                        size.height -
+                        (size.height * _particleController.value * speed) %
+                            (size.height + 100),
                     child: Opacity(
                       opacity: 0.4 + random.nextDouble() * 0.3,
                       child: Container(
@@ -272,7 +282,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                               borderRadius: BorderRadius.circular(25),
                               boxShadow: [
                                 BoxShadow(
-                                  color: withValues(Constants.primaryColor, 0.3),
+                                  color: withValues(
+                                    Constants.primaryColor,
+                                    0.3,
+                                  ),
                                   blurRadius: 20,
                                   spreadRadius: 3,
                                   offset: const Offset(0, 8),
@@ -296,8 +309,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                       builder: (context, child) {
                                         return CustomPaint(
                                           painter: _WaterPainter(
-                                            waveOffset: _waveController.value * 2 * math.pi,
-                                            fillLevel: _waterLevelAnimation.value,
+                                            waveOffset:
+                                                _waveController.value *
+                                                2 *
+                                                math.pi,
+                                            fillLevel:
+                                                _waterLevelAnimation.value,
                                             color: Constants.accentColor,
                                           ),
                                         );
@@ -325,7 +342,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
                   // App name with slide animation
                   AnimatedBuilder(
-                    animation: Listenable.merge([_textFadeAnimation, _textSlideAnimation]),
+                    animation: Listenable.merge([
+                      _textFadeAnimation,
+                      _textSlideAnimation,
+                    ]),
                     builder: (context, child) {
                       return Transform.translate(
                         offset: Offset(0, _textSlideAnimation.value),
@@ -356,15 +376,15 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                   ),
                                 ),
                               ),
-                              
+
                               const SizedBox(height: 8),
-                              
+
                               // Subtitle
                               Text(
                                 'Smart Water Management',
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   letterSpacing: 0.5,
                                 ),
                               ),
@@ -423,9 +443,10 @@ class _WaterPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
+    final paint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill;
 
     final path = Path();
     final height = size.height * (1 - fillLevel);
@@ -433,10 +454,7 @@ class _WaterPainter extends CustomPainter {
     path.moveTo(0, height);
 
     for (double i = 0; i <= size.width; i++) {
-      path.lineTo(
-        i,
-        height + math.sin((i / 30) + waveOffset) * 8,
-      );
+      path.lineTo(i, height + math.sin((i / 30) + waveOffset) * 8);
     }
 
     path.lineTo(size.width, size.height);

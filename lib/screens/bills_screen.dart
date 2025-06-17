@@ -31,14 +31,13 @@ class BillsScreen extends StatefulWidget {
   State<BillsScreen> createState() => _BillsScreenState();
 }
 
-class _BillsScreenState extends State<BillsScreen> 
+class _BillsScreenState extends State<BillsScreen>
     with TickerProviderStateMixin {
-  
   // Animation controllers
   late AnimationController _rotationController;
   late AnimationController _fadeController;
   late AnimationController _slideController;
-  
+
   // Animations
   late Animation<double> _rotationAnimation;
   late Animation<double> _fadeAnimation;
@@ -64,35 +63,26 @@ class _BillsScreenState extends State<BillsScreen>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
 
-    _rotationAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _rotationController,
-      curve: Curves.linear,
-    ));
+    _rotationAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _rotationController, curve: Curves.linear),
+    );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(
+      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+    );
 
     // Start background rotation animation
     _rotationController.repeat();
@@ -111,7 +101,7 @@ class _BillsScreenState extends State<BillsScreen>
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final billsProvider = Provider.of<BillsProvider>(context, listen: false);
       await billsProvider.fetchBills(authProvider);
-      
+
       // Start animations when data is loaded
       _fadeController.forward();
       _slideController.forward();
@@ -141,18 +131,15 @@ class _BillsScreenState extends State<BillsScreen>
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w500),
               ),
             ),
           ],
         ),
-        backgroundColor: isError ? const Color(0xFFE53E3E) : const Color(0xFF38A169),
+        backgroundColor:
+            isError ? const Color(0xFFE53E3E) : const Color(0xFF38A169),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
         duration: Duration(seconds: isError ? 4 : 2),
       ),
@@ -172,13 +159,14 @@ class _BillsScreenState extends State<BillsScreen>
         onRefresh: _refreshBills,
         color: Constants.primaryColor,
         backgroundColor: Colors.white,
-        child: billsProvider.isLoading
-            ? const BillsShimmerLoadingEffect()
-            : billsProvider.error != null
-            ? _buildErrorState()
-            : bills.isEmpty
-            ? _buildEmptyState()
-            : _buildMainContent(bills, totalUnpaid, totalMargin),
+        child:
+            billsProvider.isLoading
+                ? const BillsShimmerLoadingEffect()
+                : billsProvider.error != null
+                ? _buildErrorState()
+                : bills.isEmpty
+                ? _buildEmptyState()
+                : _buildMainContent(bills, totalUnpaid, totalMargin),
       ),
     );
   }
@@ -230,7 +218,10 @@ class _BillsScreenState extends State<BillsScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: Constants.primaryColor,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(25),
                 ),
@@ -295,7 +286,10 @@ class _BillsScreenState extends State<BillsScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: Constants.primaryColor,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(25),
                 ),
@@ -313,7 +307,11 @@ class _BillsScreenState extends State<BillsScreen>
     );
   }
 
-  Widget _buildMainContent(List<Bill> bills, double totalUnpaid, double totalMargin) {
+  Widget _buildMainContent(
+    List<Bill> bills,
+    double totalUnpaid,
+    double totalMargin,
+  ) {
     return CustomScrollView(
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
@@ -364,10 +362,7 @@ class _BillsScreenState extends State<BillsScreen>
           ],
         ),
         child: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-            color: Colors.black87,
-          ),
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
           onPressed: () {
             HapticFeedback.lightImpact();
             Navigator.pop(context);
@@ -389,10 +384,7 @@ class _BillsScreenState extends State<BillsScreen>
             ],
           ),
           child: IconButton(
-            icon: const Icon(
-              Icons.refresh_rounded,
-              color: Colors.black87,
-            ),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.black87),
             onPressed: () {
               HapticFeedback.mediumImpact();
               _fetchBills();
@@ -421,7 +413,9 @@ class _BillsScreenState extends State<BillsScreen>
                         const Color(0xFF764BA2),
                       ],
                       stops: const [0.0, 0.3, 0.7, 1.0],
-                      transform: GradientRotation(_rotationAnimation.value * 0.5),
+                      transform: GradientRotation(
+                        _rotationAnimation.value * 0.5,
+                      ),
                     ),
                   ),
                 );
@@ -433,10 +427,7 @@ class _BillsScreenState extends State<BillsScreen>
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withAlpha(15),
-                  ],
+                  colors: [Colors.transparent, Colors.black.withAlpha(15)],
                 ),
               ),
             ),
@@ -460,10 +451,10 @@ class _BillsScreenState extends State<BillsScreen>
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    
+
                     // Added margin from top of cards
                     const SizedBox(height: 16),
-                    
+
                     // Horizontal compact summary strip
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -478,7 +469,7 @@ class _BillsScreenState extends State<BillsScreen>
                           width: 1,
                         ),
                       ),
-                      
+
                       child: Row(
                         children: [
                           Expanded(
@@ -516,213 +507,6 @@ class _BillsScreenState extends State<BillsScreen>
     );
   }
 
-  Widget _buildModernSummaryCard({
-    required String title,
-    required double amount,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(35),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: Colors.white.withAlpha(100),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(15),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withAlpha(60),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: Colors.white.withAlpha(80),
-                width: 1,
-              ),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 22,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.2,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '\₪${amount.toStringAsFixed(2)}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.3,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCompactSummaryCard({
-    required String title,
-    required double amount,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(35),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withAlpha(100),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withAlpha(60),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withAlpha(80),
-                width: 1,
-              ),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 18,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.2,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '\₪${amount.toStringAsFixed(2)}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.2,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUltraCompactSummaryCard({
-    required String title,
-    required double amount,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(35),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withAlpha(100),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(15),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withAlpha(60),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: Colors.white.withAlpha(80),
-                width: 1,
-              ),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 16,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.1,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '\₪${amount.toStringAsFixed(2)}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.1,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMiniSummaryItem(
     String title,
     double amount,
@@ -738,11 +522,7 @@ class _BillsScreenState extends State<BillsScreen>
             color: color.withAlpha(60),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: 12,
-          ),
+          child: Icon(icon, color: Colors.white, size: 12),
         ),
         const SizedBox(width: 6),
         Flexible(
@@ -760,7 +540,7 @@ class _BillsScreenState extends State<BillsScreen>
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
-                '\₪${amount.toStringAsFixed(2)}',
+                '₪${amount.toStringAsFixed(2)}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -818,10 +598,7 @@ class _BillsScreenState extends State<BillsScreen>
                 const SizedBox(height: 4),
                 Text(
                   '$billCount ${billCount == 1 ? 'bill' : 'bills'} available',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -862,13 +639,15 @@ class _BillsScreenState extends State<BillsScreen>
   }
 
   Widget _buildModernBillCard(Bill bill) {
-    final statusColor = bill.status == 'Paid' 
-        ? const Color(0xFF10B981)
-        : const Color(0xFFEF4444);
-    
-    final statusBgColor = bill.status == 'Paid'
-        ? const Color(0xFFD1FAE5)
-        : const Color(0xFFFEE2E2);
+    final statusColor =
+        bill.status == 'Paid'
+            ? const Color(0xFF10B981)
+            : const Color(0xFFEF4444);
+
+    final statusBgColor =
+        bill.status == 'Paid'
+            ? const Color(0xFFD1FAE5)
+            : const Color(0xFFFEE2E2);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -882,10 +661,7 @@ class _BillsScreenState extends State<BillsScreen>
             offset: const Offset(0, 10),
           ),
         ],
-        border: Border.all(
-          color: statusColor.withAlpha(30),
-          width: 1,
-        ),
+        border: Border.all(color: statusColor.withAlpha(30), width: 1),
       ),
       child: Column(
         children: [
@@ -963,10 +739,7 @@ class _BillsScreenState extends State<BillsScreen>
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.grey.shade200,
-                width: 1,
-              ),
+              border: Border.all(color: Colors.grey.shade200, width: 1),
             ),
             child: Column(
               children: [
@@ -1055,7 +828,11 @@ class _BillsScreenState extends State<BillsScreen>
                         arguments: bill,
                       );
                     },
-                    icon: Icon(Icons.receipt_rounded, size: 18, color: Constants.primaryColor),
+                    icon: Icon(
+                      Icons.receipt_rounded,
+                      size: 18,
+                      color: Constants.primaryColor,
+                    ),
                     label: Text(
                       'View Receipt',
                       style: TextStyle(color: Constants.primaryColor),
@@ -1111,11 +888,7 @@ class _BillsScreenState extends State<BillsScreen>
             color: color.withAlpha(20),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(
-            icon,
-            size: 16,
-            color: color,
-          ),
+          child: Icon(icon, size: 16, color: color),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1142,7 +915,6 @@ class _BillsScreenState extends State<BillsScreen>
 
   Future<void> _downloadBillAsPdf(Bill bill) async {
     // Store context before async gap
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
     try {
@@ -1159,7 +931,10 @@ class _BillsScreenState extends State<BillsScreen>
       }
 
       // Generate PDF
-      final File pdfFile = await PdfService.generateBillPdf(bill, customerData: customerData);
+      final File pdfFile = await PdfService.generateBillPdf(
+        bill,
+        customerData: customerData,
+      );
 
       // Check if widget is still mounted before using context
       if (!mounted) return;
@@ -1275,8 +1050,6 @@ class _BillsScreenState extends State<BillsScreen>
             ),
             ElevatedButton.icon(
               onPressed: () async {
-                // Store context before async gap
-                final scaffoldMessenger = ScaffoldMessenger.of(context);
                 Navigator.of(context).pop();
 
                 try {
@@ -1284,7 +1057,10 @@ class _BillsScreenState extends State<BillsScreen>
                 } catch (e) {
                   // Check if widget is still mounted before using stored scaffoldMessenger
                   if (mounted) {
-                    _showSnackBar('Error opening PDF: ${e.toString()}', isError: true);
+                    _showSnackBar(
+                      'Error opening PDF: ${e.toString()}',
+                      isError: true,
+                    );
                   }
                 }
               },
@@ -1304,4 +1080,3 @@ class _BillsScreenState extends State<BillsScreen>
     );
   }
 }
-

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/bill_model.dart';
 import 'auth_provider.dart';
 import 'package:mytank/utilities/token_manager.dart';
+import '../utilities/constants.dart';
 
 class BillsProvider with ChangeNotifier {
   List<Bill> _bills = [];
@@ -58,8 +59,7 @@ class BillsProvider with ChangeNotifier {
         throw Exception('Authentication token not found');
       }
 
-      final apiUrl =
-          'https://smart-water-distribution-system-vll8.onrender.com/api/bill/my-bills';
+      final apiUrl = '${Constants.apiUrl}/bill/my-bills';
       debugPrint('🌐 Bills API URL: $apiUrl');
 
       // Prepare headers with token as cookie

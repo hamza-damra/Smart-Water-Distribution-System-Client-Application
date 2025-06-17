@@ -8,6 +8,7 @@ import 'package:mytank/components/custom_button.dart';
 import 'package:mytank/components/custom_text.dart';
 import 'package:mytank/components/custom_text_field.dart';
 import 'package:mytank/utilities/constants.dart';
+import 'package:mytank/utilities/custom_toast.dart';
 
 class UserProvider extends ChangeNotifier {
   String? userId;
@@ -68,95 +69,26 @@ class _NewLoginScreenState extends State<NewLoginScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', token);
 
-        // Show success dialog with modern styling
+        // Show success toast
         if (mounted) {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                title: Row(
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.green.shade600),
-                    const SizedBox(width: 10),
-                    const Text('Success'),
-                  ],
-                ),
-                content: const Text('User logged in successfully'),
-                actions: [
-                  TextButton(
-                    child: const Text('OK'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      getUserInfoById(token);
-                      Navigator.pushReplacementNamed(context, '/home');
-                    },
-                  ),
-                ],
-              );
-            },
-          );
+          CustomToast.showSuccess(context, 'Login successful! Welcome back.');
+          getUserInfoById(token);
+          Navigator.pushReplacementNamed(context, '/home');
         }
       } else if (response.statusCode == 200 && !responseData['success']) {
-        // Show error dialog for invalid credentials
+        // Show error toast for invalid credentials
         if (mounted) {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                title: Row(
-                  children: [
-                    Icon(Icons.error_outline, color: Colors.red.shade600),
-                    const SizedBox(width: 10),
-                    const Text('Error'),
-                  ],
-                ),
-                content: const Text('Invalid email or password'),
-                actions: [
-                  TextButton(
-                    child: const Text('OK'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ],
-              );
-            },
+          CustomToast.showError(
+            context,
+            'Invalid email or password. Please try again.',
           );
         }
       } else {
-        // Show error dialog for other errors
+        // Show error toast for other errors
         if (mounted) {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                title: Row(
-                  children: [
-                    Icon(Icons.error_outline, color: Colors.red.shade600),
-                    const SizedBox(width: 10),
-                    const Text('Error'),
-                  ],
-                ),
-                content: Text('Error logging in: ${responseData['message']}'),
-                actions: [
-                  TextButton(
-                    child: const Text('OK'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ],
-              );
-            },
+          CustomToast.showError(
+            context,
+            'Error logging in: ${responseData['message']}',
           );
         }
       }
@@ -165,34 +97,9 @@ class _NewLoginScreenState extends State<NewLoginScreen> {
         _isLoading = false;
       });
 
-      // Show error dialog for exceptions
+      // Show network error toast for exceptions
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              title: Row(
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red.shade600),
-                  const SizedBox(width: 10),
-                  const Text('Error'),
-                ],
-              ),
-              content: Text('Error: $e'),
-              actions: [
-                TextButton(
-                  child: const Text('OK'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            );
-          },
-        );
+        CustomToast.showNetworkError(context, e);
       }
     }
   }
@@ -254,9 +161,50 @@ class _NewLoginScreenState extends State<NewLoginScreen> {
           child: SingleChildScrollView(
             child: Column(
               children: [
+                // Settings icon in top left
+                Padding(
+                  padding: const EdgeInsets.only(left: 20, top: 20, right: 20),
+                  child: Row(
+                    children: [
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.pushNamed(context, '/server-config');
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.settings_outlined,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                    ],
+                  ),
+                ),
                 // Top section with logo and welcome text
                 Padding(
-                  padding: const EdgeInsets.only(top: 40, bottom: 30),
+                  padding: const EdgeInsets.only(top: 20, bottom: 30),
                   child: Column(
                     children: [
                       // Logo container

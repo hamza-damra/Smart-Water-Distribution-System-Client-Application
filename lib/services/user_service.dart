@@ -3,11 +3,9 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:mytank/models/user_model.dart';
 import 'package:mytank/utilities/token_manager.dart';
+import 'package:mytank/utilities/constants.dart';
 
 class UserService {
-  static const String baseUrl =
-      'https://smart-water-distribution-system-vll8.onrender.com/api';
-
   // Get the current user data
   static Future<User> getCurrentUser() async {
     try {
@@ -34,11 +32,13 @@ class UserService {
         'Cookie': 'access_token=$token',
       };
 
-      debugPrint('📤 Sending request to: $baseUrl/customer/current-user');
+      debugPrint(
+        '📤 Sending request to: ${Constants.apiUrl}/customer/current-user',
+      );
       debugPrint('📤 Headers: ${headers.toString()}');
 
       final response = await http.get(
-        Uri.parse('$baseUrl/customer/current-user'),
+        Uri.parse('${Constants.apiUrl}/customer/current-user'),
         headers: headers,
       );
 

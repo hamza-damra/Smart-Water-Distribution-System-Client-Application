@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:mytank/providers/auth_provider.dart';
 import 'package:mytank/utilities/token_manager.dart';
+import 'package:mytank/utilities/constants.dart';
 
 class Tank {
   final String id;
@@ -182,8 +183,7 @@ class TankProvider with ChangeNotifier {
         throw Exception('Authentication token not found');
       }
 
-      final apiUrl =
-          'https://smart-water-distribution-system-vll8.onrender.com/api/tank/customer-tanks';
+      final apiUrl = '${Constants.apiUrl}/tank/customer-tanks';
       debugPrint('🌐 Tank API URL: $apiUrl');
 
       // Prepare headers with token as cookie

@@ -2,8 +2,7 @@
 class Bill {
   final String id;
   final String customer;
-  final dynamic
-  tank; // Changed from String to dynamic to handle both String and Object
+  final dynamic tank; 
   final double amount;
   final String status;
   final int year;
@@ -37,7 +36,7 @@ class Bill {
     return Bill(
       id: json['_id'] ?? json['id'] ?? '',
       customer: json['customer'] ?? '',
-      tank: json['tank'], // Keep as dynamic to handle both String and Object
+      tank: json['tank'], 
       amount: (json['amount'] ?? 0).toDouble(),
       status: json['status'] ?? 'Unknown',
       year: json['year'] ?? 0,

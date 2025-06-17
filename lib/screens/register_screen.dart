@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../utilities/constants.dart';
 import '../utilities/route_manager.dart';
+import '../utilities/custom_toast.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -49,16 +50,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
 
         if (success && mounted) {
+          CustomToast.showSuccess(context, 'Registration successful! Welcome!');
           Navigator.pushReplacementNamed(context, RouteManager.homeRoute);
+        } else if (mounted) {
+          CustomToast.showError(
+            context,
+            'Registration failed. Please try again.',
+          );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Registration failed: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          CustomToast.showNetworkError(context, e);
         }
       } finally {
         if (mounted) {
@@ -233,17 +235,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         elevation: 4,
                       ),
-                      child: _isLoading
-                          ? const CircularProgressIndicator(
-                              color: Colors.white,
-                            )
-                          : const Text(
-                              'Register',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                      child:
+                          _isLoading
+                              ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                              : const Text(
+                                'Register',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -254,10 +257,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     children: [
                       const Text(
                         'Already have an account?',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
                       ),
                       TextButton(
                         onPressed: () {
@@ -326,4 +326,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
-} 
+}

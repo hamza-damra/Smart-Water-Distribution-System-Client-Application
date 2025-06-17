@@ -13,7 +13,8 @@ class ServerConfigScreen extends StatefulWidget {
   State<ServerConfigScreen> createState() => _ServerConfigScreenState();
 }
 
-class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTickerProviderStateMixin {
+class _ServerConfigScreenState extends State<ServerConfigScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _urlController = TextEditingController();
   bool _isLoading = false;
   bool _isCheckingConnection = false;
@@ -35,13 +36,9 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
     _fadeController.forward();
   }
 
@@ -71,7 +68,7 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
     });
 
     String url = _urlController.text.trim();
-    
+
     // Add https:// if not present
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://$url';
@@ -88,14 +85,15 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
         setState(() {
           _isCheckingConnection = false;
           _connectionStatus = 'Server is not responding';
-          _errorMessage = 'Connection timeout. Please check if the server is running.';
+          _errorMessage =
+              'Connection timeout. Please check if the server is running.';
         });
       }
     });
 
     try {
       final response = await http.get(Uri.parse(url));
-      
+
       if (_connectionTimeout?.isActive ?? false) {
         _connectionTimeout?.cancel();
       }
@@ -104,12 +102,14 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
         setState(() {
           _isCheckingConnection = false;
           // Consider 404 as successful since it means server is running
-          if (response.statusCode == 404 || (response.statusCode >= 200 && response.statusCode < 300)) {
+          if (response.statusCode == 404 ||
+              (response.statusCode >= 200 && response.statusCode < 300)) {
             _connectionStatus = 'Server is running';
             _errorMessage = null;
           } else {
             _connectionStatus = 'Server responded with error';
-            _errorMessage = 'Server returned status code: ${response.statusCode}';
+            _errorMessage =
+                'Server returned status code: ${response.statusCode}';
           }
         });
       }
@@ -117,7 +117,7 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
       if (_connectionTimeout?.isActive ?? false) {
         _connectionTimeout?.cancel();
       }
-      
+
       if (mounted) {
         setState(() {
           _isCheckingConnection = false;
@@ -234,7 +234,7 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 2),
                         ),
@@ -260,13 +260,17 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
-                                color: Constants.primaryColor.withOpacity(0.2),
+                                color: Constants.primaryColor.withValues(
+                                  alpha: 0.2,
+                                ),
                               ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
-                                color: Constants.primaryColor.withOpacity(0.2),
+                                color: Constants.primaryColor.withValues(
+                                  alpha: 0.2,
+                                ),
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -288,14 +292,16 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: _connectionStatus == 'Server is running'
-                                  ? Colors.green.withOpacity(0.1)
-                                  : Colors.red.withOpacity(0.1),
+                              color:
+                                  _connectionStatus == 'Server is running'
+                                      ? Colors.green.withValues(alpha: 0.1)
+                                      : Colors.red.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: _connectionStatus == 'Server is running'
-                                    ? Colors.green
-                                    : Colors.red,
+                                color:
+                                    _connectionStatus == 'Server is running'
+                                        ? Colors.green
+                                        : Colors.red,
                               ),
                             ),
                             child: Row(
@@ -304,18 +310,21 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
                                   _connectionStatus == 'Server is running'
                                       ? Icons.check_circle
                                       : Icons.error,
-                                  color: _connectionStatus == 'Server is running'
-                                      ? Colors.green
-                                      : Colors.red,
+                                  color:
+                                      _connectionStatus == 'Server is running'
+                                          ? Colors.green
+                                          : Colors.red,
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     _connectionStatus!,
                                     style: TextStyle(
-                                      color: _connectionStatus == 'Server is running'
-                                          ? Colors.green
-                                          : Colors.red,
+                                      color:
+                                          _connectionStatus ==
+                                                  'Server is running'
+                                              ? Colors.green
+                                              : Colors.red,
                                     ),
                                   ),
                                 ),
@@ -340,19 +349,24 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
                   // Check Connection Button
                   ElevatedButton.icon(
                     onPressed: _isCheckingConnection ? null : _checkConnection,
-                    icon: _isCheckingConnection
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Theme.of(context).colorScheme.onPrimary,
+                    icon:
+                        _isCheckingConnection
+                            ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Theme.of(context).colorScheme.onPrimary,
+                                ),
                               ),
-                            ),
-                          )
-                        : const Icon(Icons.wifi_tethering),
-                    label: Text(_isCheckingConnection ? 'Checking...' : 'Check Connection'),
+                            )
+                            : const Icon(Icons.wifi_tethering),
+                    label: Text(
+                      _isCheckingConnection
+                          ? 'Checking...'
+                          : 'Check Connection',
+                    ),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -365,19 +379,15 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
+                      color: Colors.blue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Colors.blue.withOpacity(0.3),
+                        color: Colors.blue.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.info_outline,
-                          color: Colors.blue,
-                          size: 20,
-                        ),
+                        Icon(Icons.info_outline, color: Colors.blue, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -404,22 +414,25 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
                       ),
                       elevation: 0,
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    child:
+                        _isLoading
+                            ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                            : const Text(
+                              'Save & Continue',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          )
-                        : const Text(
-                            'Save & Continue',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
                   ),
                 ],
               ),
@@ -429,4 +442,4 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> with SingleTick
       ),
     );
   }
-} 
+}

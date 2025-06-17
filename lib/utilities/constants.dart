@@ -52,7 +52,8 @@ class Constants {
   static const Duration defaultAnimationDuration = Duration(milliseconds: 300);
 
   // Default server URL
-  static const String defaultBaseUrl = 'https://smart-water-distribution-system-vll8.onrender.com';
+  static const String defaultBaseUrl =
+      'https://smart-water-distribution-system-vll8.onrender.com';
   static const String defaultApiUrl = '$defaultBaseUrl/api';
 
   // Dynamic server URL (initialized with default)
@@ -65,12 +66,18 @@ class Constants {
 
   // Update base URL and API URL
   static Future<void> updateBaseUrl(String newBaseUrl) async {
-    _baseUrl = newBaseUrl;
-    _apiUrl = '$newBaseUrl/api';
-    
+    // Remove trailing slashes if present
+    String cleanUrl = newBaseUrl;
+    while (cleanUrl.endsWith('/')) {
+      cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
+    }
+
+    _baseUrl = cleanUrl;
+    _apiUrl = '$cleanUrl/api';
+
     // Save to SharedPreferences
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('server_url', newBaseUrl);
+    await prefs.setString('server_url', cleanUrl);
   }
 
   // Initialize URLs from SharedPreferences
@@ -78,8 +85,13 @@ class Constants {
     final prefs = await SharedPreferences.getInstance();
     final savedUrl = prefs.getString('server_url');
     if (savedUrl != null) {
-      _baseUrl = savedUrl;
-      _apiUrl = '$savedUrl/api';
+      // Remove trailing slashes if present
+      String cleanUrl = savedUrl;
+      while (cleanUrl.endsWith('/')) {
+        cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
+      }
+      _baseUrl = cleanUrl;
+      _apiUrl = '$cleanUrl/api';
     }
   }
 
@@ -89,4 +101,8 @@ class Constants {
 
   // Socket.IO server URL for real-time notifications
   static String get socketUrl => baseUrl;
+
+  // Toast/Snackbar styles
+  static const Duration toastDuration = Duration(seconds: 4);
+  static const Duration shortToastDuration = Duration(seconds: 2);
 }

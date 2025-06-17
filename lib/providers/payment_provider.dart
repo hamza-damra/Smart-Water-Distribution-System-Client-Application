@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../providers/auth_provider.dart';
+import '../utilities/constants.dart';
 
 class PaymentCardDetails {
   final String number;
@@ -44,8 +45,7 @@ class PaymentProvider with ChangeNotifier {
     try {
       debugPrint('🔍 Initializing payment for bill ID: $billId');
 
-      final apiUrl =
-          'https://smart-water-distribution-system-vll8.onrender.com/api/bill/$billId/pay';
+      final apiUrl = '${Constants.apiUrl}/bill/$billId/pay';
       debugPrint('🌐 Payment API URL: $apiUrl');
 
       final headers = {
@@ -100,8 +100,7 @@ class PaymentProvider with ChangeNotifier {
     try {
       debugPrint('🔍 Confirming payment success for bill ID: $billId');
 
-      final apiUrl =
-          'https://smart-water-distribution-system-vll8.onrender.com/api/bill/$billId/payment-success';
+      final apiUrl = '${Constants.apiUrl}/bill/$billId/payment-success';
       debugPrint('🌐 Payment confirmation API URL: $apiUrl');
 
       final headers = {
