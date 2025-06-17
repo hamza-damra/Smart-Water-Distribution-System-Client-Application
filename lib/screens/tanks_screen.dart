@@ -791,7 +791,7 @@ class _TanksScreenState extends State<TanksScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${currentLevelLiters.toStringAsFixed(2)} L / ${maxCapacityLiters.toStringAsFixed(2)} L',
+                        '$currentLevelLiters L / $maxCapacityLiters L',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade600,

@@ -290,11 +290,11 @@ class LoginScreenState extends State<LoginScreen> {
                                         );
                                         if (mounted) {
                                           CustomToast.showSuccess(
-                                            currentContext,
+                                            context,
                                             'Login successful! Welcome back.',
                                           );
                                           Navigator.of(
-                                            currentContext,
+                                            context,
                                           ).pushReplacementNamed(
                                             RouteManager.homeRoute,
                                           );
@@ -306,12 +306,12 @@ class LoginScreenState extends State<LoginScreen> {
                                             'Invalid credentials',
                                           )) {
                                             CustomToast.showError(
-                                              currentContext,
+                                              context,
                                               'Invalid identity number or password. Please try again.',
                                             );
                                           } else {
                                             CustomToast.showNetworkError(
-                                              currentContext,
+                                              context,
                                               e,
                                             );
                                           }
