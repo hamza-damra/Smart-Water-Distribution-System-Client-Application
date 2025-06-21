@@ -257,6 +257,60 @@ class TankProvider with ChangeNotifier {
     }
   }
 
+  // Update tank current level from real-time data
+  void updateTankLevel(String tankId, double newLevel) {
+    try {
+      debugPrint('🌊 Updating tank level in TankProvider:');
+      debugPrint('   🏷️ Tank ID: $tankId');
+      debugPrint('   📊 New Level: $newLevel L');
+
+      // Find the tank in the list and update it
+      final tankIndex = _tanks.indexWhere((tank) => tank.id == tankId);
+      if (tankIndex != -1) {
+        final oldTank = _tanks[tankIndex];
+
+        // Create updated tank with new current level
+        final updatedTank = Tank(
+          id: oldTank.id,
+          ownerId: oldTank.ownerId,
+          radius: oldTank.radius,
+          height: oldTank.height,
+          city: oldTank.city,
+          familyMembers: oldTank.familyMembers,
+          currentLevel: newLevel, // Update the current level
+          amountPerMonth: oldTank.amountPerMonth,
+          createdAt: oldTank.createdAt,
+          updatedAt: DateTime.now(), // Update the timestamp
+          monthlyCapacity: oldTank.monthlyCapacity,
+          maxCapacity: oldTank.maxCapacity,
+          coordinates: oldTank.coordinates,
+          hardware: oldTank.hardware,
+        );
+
+        // Replace the tank in the list
+        _tanks[tankIndex] = updatedTank;
+
+        // Update selected tank if it's the one being updated
+        if (_selectedTank?.id == tankId) {
+          _selectedTank = updatedTank;
+        }
+
+        // Notify listeners to update UI
+        notifyListeners();
+
+        debugPrint('✅ Tank level updated successfully in TankProvider');
+        debugPrint('   📊 New Level: ${updatedTank.currentLevel} L');
+        debugPrint(
+          '   📊 Water Level Percentage: ${(updatedTank.waterLevelPercentage * 100).toStringAsFixed(1)}%',
+        );
+      } else {
+        debugPrint('ℹ️ Tank with ID $tankId not found in TankProvider');
+      }
+    } catch (e) {
+      debugPrint('❌ Error updating tank level in TankProvider: $e');
+    }
+  }
+
   // Clear tanks data on logout
   void clearTanks() {
     _tanks = [];

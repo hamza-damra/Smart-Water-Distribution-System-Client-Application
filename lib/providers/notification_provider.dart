@@ -182,13 +182,14 @@ class NotificationProvider with ChangeNotifier {
   void initializeRealTimeNotifications(String userId, String token) {
     try {
       debugPrint('🔔 Initializing real-time notifications for user: $userId');
-      
+
       _currentUserId = userId;
 
       final socketService = SocketService.instance;
 
       // Set up event handlers
       socketService.onNewNotification = _handleNewNotification;
+      socketService.onTankLevelUpdate = _handleTankLevelUpdate;
       socketService.onConnect = _handleSocketConnect;
       socketService.onDisconnect = _handleSocketDisconnect;
       socketService.onError = _handleSocketError;
@@ -277,18 +278,127 @@ class NotificationProvider with ChangeNotifier {
     }
   }
 
+  // Handle tank level update received via Socket.IO
+  void _handleTankLevelUpdate(Map<String, dynamic> data) {
+    try {
+      final String? tankId = data['tank_id']?.toString();
+      final double? currentLevel = (data['current_level'] as num?)?.toDouble();
+
+      debugPrint('🌊 Processing tank level update:');
+      debugPrint('   🏷️ Tank ID: $tankId');
+      debugPrint('   📊 Current Level: $currentLevel L');
+
+      if (tankId == null || currentLevel == null) {
+        debugPrint('❌ Invalid tank level update data');
+        return;
+      }
+
+      // Create a notification for the tank level update
+      final notificationMessage =
+          'Tank level updated: ${currentLevel.toStringAsFixed(1)}L';
+      final notification = NotificationModel(
+        id: 'tank_update_${tankId}_${DateTime.now().millisecondsSinceEpoch}',
+        message: notificationMessage,
+        createdAt: DateTime.now().toIso8601String(),
+        isRead: false,
+      );
+
+      // Add the notification to the list
+      _handleNewNotification(notification);
+
+      // Store tank level update for processing
+      _updateTankLevel(tankId, currentLevel);
+
+      debugPrint('✅ Tank level update processed successfully');
+    } catch (e) {
+      debugPrint('❌ Error handling tank level update: $e');
+      _error = 'Failed to process tank level update: $e';
+      notifyListeners();
+    }
+  }
+
+  // Update tank level in relevant providers
+  void _updateTankLevel(String tankId, double currentLevel) {
+    try {
+      debugPrint('🔄 Updating tank level in providers...');
+      debugPrint('   🏷️ Tank ID: $tankId');
+      debugPrint('   📊 New Level: $currentLevel L');
+
+      // Store the update for later processing when providers are available
+      // This will be handled by the application when it has access to the provider context
+      _pendingTankUpdates[tankId] = currentLevel;
+
+      debugPrint('✅ Tank level update stored for processing');
+    } catch (e) {
+      debugPrint('❌ Error storing tank level update: $e');
+    }
+  }
+
+  // Store pending tank updates
+  final Map<String, double> _pendingTankUpdates = {};
+
+  // Get and clear pending tank updates
+  Map<String, double> getPendingTankUpdates() {
+    final updates = Map<String, double>.from(_pendingTankUpdates);
+    _pendingTankUpdates.clear();
+    return updates;
+  }
+
+  // Process tank level updates with provider access
+  void processTankLevelUpdates(dynamic mainTankProvider, dynamic tankProvider) {
+    try {
+      final updates = getPendingTankUpdates();
+      if (updates.isEmpty) return;
+
+      debugPrint(
+        '🔄 Processing ${updates.length} pending tank level updates...',
+      );
+
+      for (final entry in updates.entries) {
+        final tankId = entry.key;
+        final currentLevel = entry.value;
+
+        debugPrint('   🌊 Processing update for tank $tankId: $currentLevel L');
+
+        // Update MainTankProvider if it has the updateTankLevel method
+        if (mainTankProvider != null) {
+          try {
+            mainTankProvider.updateTankLevel(tankId, currentLevel);
+            debugPrint('   ✅ Updated MainTankProvider');
+          } catch (e) {
+            debugPrint('   ❌ Error updating MainTankProvider: $e');
+          }
+        }
+
+        // Update TankProvider if it has the updateTankLevel method
+        if (tankProvider != null) {
+          try {
+            tankProvider.updateTankLevel(tankId, currentLevel);
+            debugPrint('   ✅ Updated TankProvider');
+          } catch (e) {
+            debugPrint('   ❌ Error updating TankProvider: $e');
+          }
+        }
+      }
+
+      debugPrint('✅ All pending tank level updates processed');
+    } catch (e) {
+      debugPrint('❌ Error processing tank level updates: $e');
+    }
+  }
+
   // Handle socket connection established
   void _handleSocketConnect() {
     debugPrint('✅ Socket connected - real-time notifications active');
     _isSocketConnected = true;
     _error = null;
-    
+
     // Cancel any existing reconnect timer
     _reconnectTimer?.cancel();
-    
+
     // Notify UI immediately
     notifyListeners();
-    
+
     // Start heartbeat to maintain connection
     _startHeartbeat();
   }
@@ -298,10 +408,10 @@ class NotificationProvider with ChangeNotifier {
     debugPrint('🔌 Socket disconnected - real-time notifications inactive');
     _isSocketConnected = false;
     notifyListeners();
-    
+
     // Stop heartbeat
     _heartbeatTimer?.cancel();
-    
+
     // Attempt to reconnect after 5 seconds
     _attemptReconnect();
   }
@@ -312,7 +422,7 @@ class NotificationProvider with ChangeNotifier {
     _isSocketConnected = false;
     _error = 'Real-time connection error: $error';
     notifyListeners();
-    
+
     // Attempt to reconnect after 3 seconds
     _attemptReconnect();
   }
@@ -320,7 +430,7 @@ class NotificationProvider with ChangeNotifier {
   // Attempt to reconnect to socket
   void _attemptReconnect() {
     if (_currentUserId == null) return;
-    
+
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(Duration(seconds: 5), () async {
       if (!_isSocketConnected && _currentUserId != null) {
@@ -352,7 +462,7 @@ class NotificationProvider with ChangeNotifier {
 
       _isSocketConnected = false;
       _currentUserId = null;
-      
+
       // Cancel timers
       _heartbeatTimer?.cancel();
       _reconnectTimer?.cancel();

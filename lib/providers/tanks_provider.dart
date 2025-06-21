@@ -72,4 +72,53 @@ class TanksProvider with ChangeNotifier {
       rethrow;
     }
   }
+
+  // Update tank current level from real-time data
+  void updateTankLevel(String tankId, double newLevel) {
+    try {
+      debugPrint('🌊 Updating tank level in TanksProvider:');
+      debugPrint('   🏷️ Tank ID: $tankId');
+      debugPrint('   📊 New Level: $newLevel L');
+
+      // Find the tank in the list and update it
+      final tankIndex = _tanks.indexWhere((tank) => tank.id == tankId);
+      if (tankIndex != -1) {
+        final oldTank = _tanks[tankIndex];
+
+        // Create updated tank with new current level
+        final updatedTank = Tank(
+          id: oldTank.id,
+          owner: oldTank.owner,
+          radius: oldTank.radius,
+          height: oldTank.height,
+          city: oldTank.city,
+          familyMembers: oldTank.familyMembers,
+          currentLevel: newLevel, // Update the current level
+          amountPerMonth: oldTank.amountPerMonth,
+          maxCapacity: oldTank.maxCapacity,
+          monthlyCapacity: oldTank.monthlyCapacity,
+          coordinates: oldTank.coordinates,
+          hardware: oldTank.hardware,
+          createdAt: oldTank.createdAt,
+          updatedAt: DateTime.now(), // Update the timestamp
+        );
+
+        // Replace the tank in the list
+        _tanks[tankIndex] = updatedTank;
+
+        // Notify listeners to update UI
+        notifyListeners();
+
+        debugPrint('✅ Tank level updated successfully in TanksProvider');
+        debugPrint('   📊 New Level: ${updatedTank.currentLevel} L');
+        debugPrint(
+          '   📊 Fill Percentage: ${updatedTank.fillPercentage.toStringAsFixed(1)}%',
+        );
+      } else {
+        debugPrint('ℹ️ Tank with ID $tankId not found in TanksProvider');
+      }
+    } catch (e) {
+      debugPrint('❌ Error updating tank level in TanksProvider: $e');
+    }
+  }
 }

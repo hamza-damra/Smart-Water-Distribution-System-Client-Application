@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:mytank/providers/auth_provider.dart';
 import 'package:mytank/providers/main_tank_provider.dart';
 import 'package:mytank/providers/notification_provider.dart';
+import 'package:mytank/providers/tanks_provider.dart';
 import 'package:mytank/utilities/route_manager.dart';
 import 'package:mytank/utilities/constants.dart';
 import 'package:mytank/widgets/water_tank_3d.dart';
@@ -223,8 +224,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           debugPrint('🔄 Periodic notification refresh (socket disconnected)');
           notificationProvider.fetchNotifications();
         }
+
+        // Process any pending tank level updates
+        _processPendingTankUpdates();
       }
     });
+  }
+
+  // Process pending tank level updates
+  void _processPendingTankUpdates() {
+    try {
+      final notificationProvider = Provider.of<NotificationProvider>(
+        context,
+        listen: false,
+      );
+
+      // Get tank providers
+      final mainTankProvider = Provider.of<MainTankProvider>(
+        context,
+        listen: false,
+      );
+      final tankProvider = Provider.of<TanksProvider>(context, listen: false);
+
+      // Process pending updates
+      notificationProvider.processTankLevelUpdates(
+        mainTankProvider,
+        tankProvider,
+      );
+    } catch (e) {
+      debugPrint('❌ Error processing pending tank updates: $e');
+    }
   }
 
   /// Trigger bounce animation when notification count increases

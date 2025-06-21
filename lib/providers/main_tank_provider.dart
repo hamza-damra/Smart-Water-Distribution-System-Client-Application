@@ -141,6 +141,46 @@ class MainTankProvider with ChangeNotifier {
     }
   }
 
+  // Update tank current level from real-time data
+  void updateTankLevel(String tankId, double newLevel) {
+    try {
+      debugPrint('🌊 Updating tank level in MainTankProvider:');
+      debugPrint('   🏷️ Tank ID: $tankId');
+      debugPrint('   📊 New Level: $newLevel L');
+      debugPrint('   🏷️ Current Tank ID: ${_mainTank?.id}');
+
+      // Check if this update is for the current main tank
+      if (_mainTank != null && _mainTank!.id == tankId) {
+        // Create updated tank with new current level
+        _mainTank = MainTank(
+          id: _mainTank!.id,
+          radius: _mainTank!.radius,
+          height: _mainTank!.height,
+          city: _mainTank!.city,
+          currentLevel: newLevel, // Update the current level
+          maxCapacity: _mainTank!.maxCapacity,
+          coordinates: _mainTank!.coordinates,
+          amountPerMonth: _mainTank!.amountPerMonth,
+          createdAt: _mainTank!.createdAt,
+          updatedAt: DateTime.now(), // Update the timestamp
+        );
+
+        // Notify listeners to update UI
+        notifyListeners();
+
+        debugPrint('✅ Main tank level updated successfully');
+        debugPrint('   📊 New Level: ${_mainTank!.currentLevel} L');
+        debugPrint(
+          '   📊 Water Level Percentage: ${(waterLevelPercentage * 100).toStringAsFixed(1)}%',
+        );
+      } else {
+        debugPrint('ℹ️ Tank level update not for current main tank, ignoring');
+      }
+    } catch (e) {
+      debugPrint('❌ Error updating tank level in MainTankProvider: $e');
+    }
+  }
+
   // Clear main tank data on logout
   void clearMainTankData() {
     _mainTank = null;

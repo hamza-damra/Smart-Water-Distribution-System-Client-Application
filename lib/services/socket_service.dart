@@ -22,6 +22,7 @@ class SocketService {
 
   // Callback functions for handling events
   Function(NotificationModel)? onNewNotification;
+  Function(Map<String, dynamic>)? onTankLevelUpdate;
   Function()? onConnect;
   Function()? onDisconnect;
   Function(String)? onError;
@@ -168,6 +169,42 @@ class SocketService {
       }
     });
 
+    // Listen for tank level updates
+    _socket!.on('tank_level_update', (data) {
+      debugPrint('🌊 Received tank level update: $data');
+
+      try {
+        if (data is Map<String, dynamic>) {
+          final String? tankId = data['tank_id']?.toString();
+          final double? currentLevel =
+              (data['current_level'] as num?)?.toDouble();
+
+          debugPrint('🔍 Tank ID: $tankId');
+          debugPrint('🔍 Current Level: $currentLevel');
+
+          if (tankId != null && currentLevel != null) {
+            // Trigger callback to handle tank level update
+            if (onTankLevelUpdate != null) {
+              onTankLevelUpdate!(data);
+              debugPrint('✅ Tank level update callback triggered successfully');
+            } else {
+              debugPrint('⚠️ No tank level update callback registered');
+            }
+          } else {
+            debugPrint(
+              '❌ Invalid tank level update data: missing tank_id or current_level',
+            );
+          }
+        } else {
+          debugPrint('❌ Invalid tank level update format: ${data.runtimeType}');
+        }
+      } catch (e) {
+        debugPrint('❌ Error parsing tank level update: $e');
+        debugPrint('❌ Raw data: $data');
+        onError?.call('Failed to parse tank level update: $e');
+      }
+    });
+
     // Listen for other custom events if needed
     _socket!.on('notification_read', (data) {
       debugPrint('📖 Notification marked as read: $data');
@@ -224,7 +261,7 @@ class SocketService {
     final incomingUserId = receivedUserId.trim();
 
     final isMatch = currentUserId == incomingUserId;
-    
+
     if (isMatch) {
       debugPrint('✅ User ID match confirmed: $currentUserId');
     } else {

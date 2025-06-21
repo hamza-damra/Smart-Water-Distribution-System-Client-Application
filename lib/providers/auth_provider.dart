@@ -71,18 +71,42 @@ class AuthProvider with ChangeNotifier {
   /// Load any previously saved token from local storage and validate it.
   Future<void> initialize() async {
     try {
-      _accessToken = await TokenManager.getToken();
+      debugPrint('🔄 Initializing AuthProvider...');
 
-      // If we have a token, try to validate it by fetching user info
-      if (_accessToken != null) {
-        debugPrint('🔑 Found saved token, validating...');
-        await _validateTokenAndFetchUserInfo();
+      // Get complete session data from storage
+      final sessionData = await TokenManager.getCompleteSession();
+      final token = sessionData['token'];
+      final userName = sessionData['userName'];
+      final userId = sessionData['userId'];
+      final isLoggedIn = sessionData['isLoggedIn'] == 'true';
+
+      debugPrint('📖 Session data retrieved:');
+      debugPrint('   Token: ${token != null ? 'present' : 'null'}');
+      debugPrint('   User: $userName');
+      debugPrint('   User ID: $userId');
+      debugPrint('   Is Logged In: $isLoggedIn');
+
+      if (token != null && isLoggedIn) {
+        _accessToken = token;
+        _userName = userName;
+        _userId = userId;
+
+        debugPrint('🔑 Found saved session, validating token...');
+
+        // TEMPORARY: Skip token validation to test if this is the issue
+        // Comment out the validation line to see if login state persists
+        // await _validateTokenAndFetchUserInfo();
+
+        // Instead, just trust the saved session for now
+        debugPrint('⚠️ TEMPORARY: Skipping token validation for debugging');
+        debugPrint('✅ Using saved session without validation');
       } else {
-        debugPrint('🔑 No saved token found');
+        debugPrint('🔑 No valid saved session found');
+        await TokenManager.clearCompleteSession();
       }
     } catch (e) {
       debugPrint('❌ Error during initialization: $e');
-      // Clear invalid token
+      // Clear invalid session
       await logout();
     }
     notifyListeners();
@@ -90,9 +114,16 @@ class AuthProvider with ChangeNotifier {
 
   /// Validate the current token and fetch user information
   Future<void> _validateTokenAndFetchUserInfo() async {
-    if (_accessToken == null) return;
+    if (_accessToken == null) {
+      debugPrint('❌ Cannot validate token: _accessToken is null');
+      return;
+    }
 
     try {
+      debugPrint('🔍 Validating token with API...');
+      debugPrint('🌐 API URL: ${Constants.apiUrl}/customer/current-user');
+      debugPrint('🔑 Token preview: ${_accessToken!.substring(0, 15)}...');
+
       final response = await http.get(
         Uri.parse('${Constants.apiUrl}/customer/current-user'),
         headers: {
@@ -101,28 +132,47 @@ class AuthProvider with ChangeNotifier {
         },
       );
 
+      debugPrint('📡 Token validation response status: ${response.statusCode}');
+      debugPrint('📡 Response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        debugPrint('📊 Parsed response data: $data');
+
         if (data['success'] == true && data['user'] != null) {
           _userName = data['user']['name'] ?? data['user']['fullName'];
           _userId = data['user']['_id'];
+
+          // Update stored session data with validated information
+          await TokenManager.saveCompleteSession(
+            token: _accessToken!,
+            userName: _userName!,
+            userId: _userId,
+          );
+
           debugPrint('✅ Token validated successfully for user: $_userName');
         } else {
-          debugPrint('❌ Invalid token response');
+          debugPrint(
+            '❌ Invalid token response - success: ${data['success']}, user: ${data['user']}',
+          );
           await logout();
         }
       } else if (response.statusCode == 401) {
-        debugPrint('❌ Token expired or invalid');
+        debugPrint('❌ Token expired or invalid (401 Unauthorized)');
         await logout();
       } else {
         debugPrint(
           '❌ Token validation failed with status: ${response.statusCode}',
         );
+        debugPrint('❌ Response body: ${response.body}');
         // Don't logout on network errors, keep the token for retry
+        debugPrint('⚠️ Keeping token for retry due to network/server error');
       }
     } catch (e) {
       debugPrint('❌ Token validation error: $e');
+      debugPrint('❌ Error type: ${e.runtimeType}');
       // Don't logout on network errors, keep the token for retry
+      debugPrint('⚠️ Keeping token for retry due to network error');
     }
   }
 
@@ -178,7 +228,7 @@ class AuthProvider with ChangeNotifier {
               );
               debugPrint('🔑 Token length: ${tokenValue.length} characters');
 
-              // Save token locally for later use
+              // Save token locally for later use (temporary, will be updated with complete session)
               await TokenManager.saveToken(tokenValue);
               debugPrint('💾 Token saved to local storage');
 
@@ -207,10 +257,26 @@ class AuthProvider with ChangeNotifier {
                 }
 
                 debugPrint('👤 User info extracted: $_userName (ID: $_userId)');
+
+                // Save complete session data
+                await TokenManager.saveCompleteSession(
+                  token: tokenValue,
+                  userName: _userName!,
+                  userId: _userId,
+                );
+                debugPrint('✅ Complete session saved to SharedPreferences');
               } catch (e) {
                 debugPrint('❌ Error parsing user data: $e');
                 _userName = 'User';
                 _userId = null;
+
+                // Still save session even with minimal user data
+                await TokenManager.saveCompleteSession(
+                  token: tokenValue,
+                  userName: _userName!,
+                  userId: _userId,
+                );
+                debugPrint('✅ Session saved with minimal user data');
               }
             } else {
               debugPrint('❌ Token value is null after regex match');
@@ -259,10 +325,15 @@ class AuthProvider with ChangeNotifier {
     // Note: Real-time notifications disconnection should be handled
     // in the UI layer using logoutWithContext() method
 
+    debugPrint('🚪 Logging out user...');
     _accessToken = null;
     _userName = null;
     _userId = null;
-    await TokenManager.clearToken();
+
+    // Clear complete session from SharedPreferences
+    await TokenManager.clearCompleteSession();
+    debugPrint('✅ User logged out and session cleared');
+
     notifyListeners();
   }
 
@@ -307,7 +378,15 @@ class AuthProvider with ChangeNotifier {
         _accessToken = data['token'];
         _userName = data['user']['name'];
         _userId = data['user']['_id'];
-        await TokenManager.saveToken(data['token']);
+
+        // Save complete session data
+        await TokenManager.saveCompleteSession(
+          token: data['token'],
+          userName: _userName!,
+          userId: _userId,
+        );
+        debugPrint('✅ Registration successful, session saved');
+
         notifyListeners();
         return true;
       }

@@ -288,30 +288,30 @@ class LoginScreenState extends State<LoginScreen> {
                                           identityNumber,
                                           password,
                                         );
-                                        if (mounted) {
+                                        if (mounted && currentContext.mounted) {
                                           CustomToast.showSuccess(
-                                            context,
+                                            currentContext,
                                             'Login successful! Welcome back.',
                                           );
                                           Navigator.of(
-                                            context,
+                                            currentContext,
                                           ).pushReplacementNamed(
                                             RouteManager.homeRoute,
                                           );
                                         }
                                       } catch (e) {
-                                        if (mounted) {
+                                        if (mounted && currentContext.mounted) {
                                           // Check if it's a network error and show appropriate toast
                                           if (e.toString().contains(
                                             'Invalid credentials',
                                           )) {
                                             CustomToast.showError(
-                                              context,
+                                              currentContext,
                                               'Invalid identity number or password. Please try again.',
                                             );
                                           } else {
                                             CustomToast.showNetworkError(
-                                              context,
+                                              currentContext,
                                               e,
                                             );
                                           }
